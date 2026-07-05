@@ -4,7 +4,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { BrandLogo } from '../components/BrandLogo';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { colors, spacing } from '../constants/theme';
+import { AuthScreen } from '../screens/auth/AuthScreen';
 import { MainNavigator } from './MainNavigator';
 import { OnboardingNavigator } from './OnboardingNavigator';
 import type { RootStackParamList } from './types';
@@ -12,14 +14,22 @@ import type { RootStackParamList } from './types';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
+  const { isAuthenticated, authLoading } = useAuth();
   const { onboardingComplete, refreshProfile } = useApp();
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    refreshProfile().finally(() => setLoading(false));
-  }, [refreshProfile]);
+    if (authLoading) {
+      return;
+    }
+    if (!isAuthenticated) {
+      setDataLoading(false);
+      return;
+    }
+    refreshProfile().finally(() => setDataLoading(false));
+  }, [authLoading, isAuthenticated, refreshProfile]);
 
-  if (loading) {
+  if (authLoading || (isAuthenticated && dataLoading)) {
     return (
       <View style={styles.loading}>
         <BrandLogo size="lg" showTagline />
@@ -30,7 +40,9 @@ export function RootNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {onboardingComplete ? (
+        {!isAuthenticated ? (
+          <Stack.Screen name="Auth" component={AuthScreen} />
+        ) : onboardingComplete ? (
           <Stack.Screen name="Main" component={MainNavigator} />
         ) : (
           <Stack.Screen name="Onboarding" component={OnboardingNavigator} />

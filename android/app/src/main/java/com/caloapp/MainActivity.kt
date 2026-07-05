@@ -1,4 +1,4 @@
-package com.caltrack
+package com.caloapp
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

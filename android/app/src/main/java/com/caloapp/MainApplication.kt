@@ -1,4 +1,4 @@
-package com.caltrack
+package com.caloapp
 
 import android.app.Application
 import com.facebook.react.PackageList

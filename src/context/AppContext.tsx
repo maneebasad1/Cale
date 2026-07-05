@@ -1,7 +1,8 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { syncDailyReminder } from '../services/notificationService';
 import { getProfile } from '../services/storage';
 import type { UserProfile } from '../types';
+import { useAuth } from './AuthContext';
 
 interface AppContextValue {
   profile: UserProfile | null;
@@ -16,8 +17,16 @@ const AppContext = createContext<AppContextValue>({
 });
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setProfile(null);
+      setOnboardingComplete(false);
+    }
+  }, [isAuthenticated]);
 
   const refreshProfile = useCallback(async () => {
     const p = await getProfile();

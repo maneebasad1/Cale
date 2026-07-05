@@ -13,6 +13,7 @@ import { LabeledInput } from '../../components/LabeledInput';
 import { Screen } from '../../components/Screen';
 import { UnitToggle } from '../../components/UnitToggle';
 import { colors, spacing } from '../../constants/theme';
+import { useAuth } from '../../context/AuthContext';
 import { getProfile, saveProfile } from '../../services/storage';
 import {
   DEFAULT_REMINDER_MINUTES,
@@ -46,6 +47,7 @@ import {
 } from '../../utils/units';
 
 export function SettingsScreen() {
+  const { signOut, user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
   const [heightUnit, setHeightUnit] = useState<HeightUnit>('cm');
@@ -457,6 +459,24 @@ export function SettingsScreen() {
           loading={saving}
           style={styles.saveBtn}
         />
+
+        <View style={styles.accountSection}>
+          <Text style={styles.sectionLabel}>Account</Text>
+          {user?.email && (
+            <Text style={styles.accountEmail}>{user.email}</Text>
+          )}
+          <Button
+            title="Sign Out"
+            variant="secondary"
+            onPress={() =>
+              Alert.alert('Sign out', 'Sign out of your Calo account?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Sign Out', style: 'destructive', onPress: signOut },
+              ])
+            }
+            style={styles.signOutBtn}
+          />
+        </View>
       </KeyboardAwareScreen>
     </Screen>
   );
@@ -568,6 +588,20 @@ const styles = StyleSheet.create({
   },
   saveBtn: {
     marginTop: spacing.md,
+  },
+  accountSection: {
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  accountEmail: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  signOutBtn: {
+    marginTop: spacing.xs,
   },
   goalList: {
     gap: spacing.xs,

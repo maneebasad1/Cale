@@ -138,8 +138,20 @@ export function getFoodById(id: string): FoodItem | undefined {
 export async function resolveFoodById(
   id: string,
 ): Promise<FoodItem | undefined> {
-  if (id.startsWith('user-')) {
+  const local = getFoodById(id);
+  if (local) {
+    return local;
+  }
+
+  if (id.startsWith('user-') || isUuid(id)) {
     return getCustomFoodById(id);
   }
-  return getFoodById(id);
+
+  return undefined;
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }

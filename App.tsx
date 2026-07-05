@@ -4,11 +4,13 @@
  * @format
  */
 
+import 'react-native-url-polyfill/auto';
 import 'react-native-gesture-handler';
 import React from 'react';
 import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider } from './src/context/AppContext';
+import { AuthProvider } from './src/context/AuthContext';
 import { colors } from './src/constants/theme';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
@@ -19,9 +21,11 @@ function App() {
         barStyle="dark-content"
         backgroundColor={colors.surface}
       />
-      <AppProvider>
-        <RootNavigator />
-      </AppProvider>
+      <AuthProvider>
+        <AppProvider>
+          <RootNavigator />
+        </AppProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

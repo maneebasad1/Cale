@@ -58,6 +58,7 @@ export type HistoryStackParamList = {
 };
 
 export type RootStackParamList = {
+  Auth: undefined;
   Onboarding: undefined;
   Main: undefined;
 };
