@@ -19,6 +19,7 @@ create table if not exists public.profiles (
   onboarding_complete boolean not null default false,
   reminder_enabled boolean default false,
   reminder_time_minutes integer,
+  meal_reminders jsonb,
   last_weight_prompt_date date,
   updated_at timestamptz not null default now()
 );
@@ -113,3 +114,24 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- Permanently delete the signed-in user and all their data.
+create or replace function public.delete_own_account()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from public.calorie_entries where user_id = auth.uid();
+  delete from public.custom_foods where user_id = auth.uid();
+  delete from public.weight_entries where user_id = auth.uid();
+  delete from public.profiles where id = auth.uid();
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+
+grant execute on function public.delete_own_account() to authenticated;
+
+-- If you already deployed an older schema, run:
+-- alter table public.profiles add column if not exists meal_reminders jsonb;

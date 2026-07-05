@@ -153,7 +153,7 @@ export function SummaryScreen({ route }: Props) {
         <Text style={styles.note}>
           Targets use the Mifflin-St Jeor equation and are estimates (±
           {TARGET_RANGE_KCAL} kcal). You can update your profile anytime in
-          Settings.
+          Profile.
         </Text>
       </ScrollView>
 

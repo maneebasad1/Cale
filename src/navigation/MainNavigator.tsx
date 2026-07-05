@@ -9,7 +9,7 @@ import { MyFoodsScreen } from '../screens/foods/MyFoodsScreen';
 import { DayDetailScreen } from '../screens/history/DayDetailScreen';
 import { HistoryScreen } from '../screens/history/HistoryScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
-import { SettingsScreen } from '../screens/settings/SettingsScreen';
+import { ProfileNavigator } from './ProfileNavigator';
 import type {
   HistoryStackParamList,
   MainStackParamList,
@@ -61,7 +61,7 @@ function TabNavigator() {
           const iconMap = {
             Home: 'home',
             History: 'calendar',
-            Settings: 'settings',
+            Profile: 'person',
           } as const;
           return <TabIcon name={iconMap[route.name]} focused={focused} />;
         },
@@ -77,9 +77,9 @@ function TabNavigator() {
         options={{ headerShown: false, title: 'History' }}
       />
       <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{ title: 'Settings' }}
+        name="Profile"
+        component={ProfileNavigator}
+        options={{ headerShown: false, title: 'Profile' }}
       />
     </Tab.Navigator>
   );

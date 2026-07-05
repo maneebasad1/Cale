@@ -24,4 +24,4 @@ All tables use Row Level Security so each user only sees their own data.
 
 `Auth` → `Onboarding` (first time) → `Main`
 
-Sign out from **Settings → Account**.
+Sign out from **Profile → Account**.

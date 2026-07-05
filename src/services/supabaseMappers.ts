@@ -1,4 +1,6 @@
-import type { CalorieEntry, UserProfile } from '../types';
+import type { CalorieEntry, MealReminders, UserProfile } from '../types';
+import { DEFAULT_MEAL_REMINDERS, MEAL_REMINDER_MEALS } from '../types';
+import { isAnyMealReminderEnabled, resolveMealReminders } from '../utils/mealReminders';
 import type { FoodItem } from '../types/food';
 import type { WeightEntry } from '../types/weight';
 
@@ -19,6 +21,7 @@ export interface ProfileRow {
   onboarding_complete: boolean;
   reminder_enabled: boolean | null;
   reminder_time_minutes: number | null;
+  meal_reminders: UserProfile['mealReminders'] | null;
   last_weight_prompt_date: string | null;
 }
 
@@ -69,11 +72,18 @@ export function profileFromRow(row: ProfileRow): UserProfile {
     onboardingComplete: row.onboarding_complete,
     reminderEnabled: row.reminder_enabled ?? undefined,
     reminderTimeMinutes: row.reminder_time_minutes ?? undefined,
+    mealReminders: row.meal_reminders ?? undefined,
     lastWeightPromptDate: row.last_weight_prompt_date ?? undefined,
   };
 }
 
+function mealRemindersToRow(profile: UserProfile): MealReminders {
+  return resolveMealReminders(profile);
+}
+
 export function profileToRow(userId: string, profile: UserProfile): ProfileRow {
+  const mealReminders = mealRemindersToRow(profile);
+
   return {
     id: userId,
     weight_kg: profile.weightKg,
@@ -89,8 +99,12 @@ export function profileToRow(userId: string, profile: UserProfile): ProfileRow {
     weight_unit: profile.weightUnit,
     height_unit: profile.heightUnit,
     onboarding_complete: profile.onboardingComplete,
-    reminder_enabled: profile.reminderEnabled ?? null,
-    reminder_time_minutes: profile.reminderTimeMinutes ?? null,
+    reminder_enabled: isAnyMealReminderEnabled(profile),
+    reminder_time_minutes:
+      mealReminders?.dinner.timeMinutes ??
+      profile.reminderTimeMinutes ??
+      DEFAULT_MEAL_REMINDERS.dinner.timeMinutes,
+    meal_reminders: mealReminders,
     last_weight_prompt_date: profile.lastWeightPromptDate ?? null,
   };
 }

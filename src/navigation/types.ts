@@ -49,7 +49,16 @@ export type MainStackParamList = {
 export type MainTabParamList = {
   Home: undefined;
   History: undefined;
-  Settings: undefined;
+  Profile: undefined;
+};
+
+export type ProfileStackParamList = {
+  ProfileHome: undefined;
+  ProfileBody: undefined;
+  ProfileGoals: undefined;
+  ProfileWeight: undefined;
+  ProfileNotifications: undefined;
+  ProfileAccount: undefined;
 };
 
 export type HistoryStackParamList = {

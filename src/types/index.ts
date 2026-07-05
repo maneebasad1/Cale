@@ -30,6 +30,28 @@ export interface DailyLog {
   entries: CalorieEntry[];
 }
 
+export type MealReminderMeal = 'breakfast' | 'lunch' | 'dinner';
+
+export interface MealReminderSetting {
+  enabled: boolean;
+  /** Minutes from midnight, e.g. 8:00 = 480 */
+  timeMinutes: number;
+}
+
+export type MealReminders = Record<MealReminderMeal, MealReminderSetting>;
+
+export const MEAL_REMINDER_MEALS: MealReminderMeal[] = [
+  'breakfast',
+  'lunch',
+  'dinner',
+];
+
+export const DEFAULT_MEAL_REMINDERS: MealReminders = {
+  breakfast: { enabled: false, timeMinutes: 8 * 60 },
+  lunch: { enabled: false, timeMinutes: 12 * 60 + 30 },
+  dinner: { enabled: false, timeMinutes: 19 * 60 },
+};
+
 export interface UserProfile {
   weightKg: number;
   heightCm: number;
@@ -45,8 +67,9 @@ export interface UserProfile {
   heightUnit: HeightUnit;
   onboardingComplete: boolean;
   reminderEnabled?: boolean;
-  /** Minutes from midnight, e.g. 20:00 = 1200 */
+  /** @deprecated Use mealReminders instead */
   reminderTimeMinutes?: number;
+  mealReminders?: MealReminders;
   lastWeightPromptDate?: string;
 }
 

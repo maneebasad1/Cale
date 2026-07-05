@@ -5,6 +5,7 @@ import { colors } from '../constants/theme';
 export type IconName =
   | 'home'
   | 'calendar'
+  | 'person'
   | 'settings'
   | 'add'
   | 'checkmark-circle'
@@ -20,12 +21,12 @@ export type IconName =
   | 'trash-outline';
 
 const TAB_ICONS: Record<
-  'home' | 'calendar' | 'settings',
+  'home' | 'calendar' | 'person',
   { active: string; inactive: string }
 > = {
   home: { active: 'home', inactive: 'home-outline' },
   calendar: { active: 'calendar', inactive: 'calendar-outline' },
-  settings: { active: 'settings', inactive: 'settings-outline' },
+  person: { active: 'person', inactive: 'person-outline' },
 };
 
 interface IconProps {
@@ -41,7 +42,7 @@ export function Icon({
   color = colors.text,
   focused,
 }: IconProps) {
-  if (name === 'home' || name === 'calendar' || name === 'settings') {
+  if (name === 'home' || name === 'calendar' || name === 'person') {
     const iconName = focused
       ? TAB_ICONS[name].active
       : TAB_ICONS[name].inactive;
@@ -52,7 +53,7 @@ export function Icon({
 }
 
 interface TabIconProps {
-  name: 'home' | 'calendar' | 'settings';
+  name: 'home' | 'calendar' | 'person';
   focused: boolean;
   size?: number;
 }

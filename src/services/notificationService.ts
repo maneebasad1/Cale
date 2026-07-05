@@ -6,13 +6,20 @@ import notifee, {
   TimestampTrigger,
   TriggerType,
 } from '@notifee/react-native';
-import type { UserProfile } from '../types';
+import type { MealReminderMeal, MealReminders, UserProfile } from '../types';
+import { MEAL_LABELS } from '../types';
+import {
+  mealReminderBody,
+  notificationIdForMeal,
+  resolveMealReminders,
+} from '../utils/mealReminders';
 import { getTodayLog } from './storage';
 
 const CHANNEL_ID = 'calo-daily-reminder';
-const REMINDER_NOTIFICATION_ID = 'daily-log-reminder';
+const TEST_NOTIFICATION_ID = 'test-notification';
 
-export const DEFAULT_REMINDER_MINUTES = 20 * 60;
+/** @deprecated Use DEFAULT_MEAL_REMINDERS.dinner.timeMinutes */
+export const DEFAULT_REMINDER_MINUTES = 19 * 60;
 
 export function minutesToLabel(minutes: number): string {
   const hours = Math.floor(minutes / 60);
@@ -22,31 +29,24 @@ export function minutesToLabel(minutes: number): string {
   return `${displayHour}:${String(mins).padStart(2, '0')} ${period}`;
 }
 
-export function parseTimeLabel(label: string): number | null {
-  const match = label.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (!match) {
-    return null;
-  }
+export function dateFromMinutes(minutesFromMidnight: number): Date {
+  const date = new Date();
+  date.setHours(Math.floor(minutesFromMidnight / 60));
+  date.setMinutes(minutesFromMidnight % 60);
+  date.setSeconds(0);
+  date.setMilliseconds(0);
+  return date;
+}
 
-  let hours = parseInt(match[1], 10);
-  const mins = parseInt(match[2], 10);
-  const period = match[3].toUpperCase();
-
-  if (period === 'PM' && hours !== 12) {
-    hours += 12;
-  }
-  if (period === 'AM' && hours === 12) {
-    hours = 0;
-  }
-
-  return hours * 60 + mins;
+export function minutesFromDate(date: Date): number {
+  return date.getHours() * 60 + date.getMinutes();
 }
 
 async function ensureChannel(): Promise<void> {
   if (Platform.OS === 'android') {
     await notifee.createChannel({
       id: CHANNEL_ID,
-      name: 'Daily reminders',
+      name: 'Meal reminders',
       importance: AndroidImportance.DEFAULT,
     });
   }
@@ -75,11 +75,25 @@ function getNextTriggerDate(minutesFromMidnight: number): Date {
   return trigger;
 }
 
-export async function scheduleDailyReminder(
-  minutesFromMidnight: number = DEFAULT_REMINDER_MINUTES,
+export async function cancelMealReminder(meal: MealReminderMeal): Promise<void> {
+  await notifee.cancelNotification(notificationIdForMeal(meal));
+}
+
+export async function cancelAllMealReminders(): Promise<void> {
+  await Promise.all([
+    cancelMealReminder('breakfast'),
+    cancelMealReminder('lunch'),
+    cancelMealReminder('dinner'),
+  ]);
+}
+
+export async function scheduleMealReminder(
+  meal: MealReminderMeal,
+  minutesFromMidnight: number,
 ): Promise<void> {
   await ensureChannel();
-  await notifee.cancelNotification(REMINDER_NOTIFICATION_ID);
+  const notificationId = notificationIdForMeal(meal);
+  await notifee.cancelNotification(notificationId);
 
   const triggerDate = getNextTriggerDate(minutesFromMidnight);
   const trigger: TimestampTrigger = {
@@ -90,9 +104,9 @@ export async function scheduleDailyReminder(
 
   await notifee.createTriggerNotification(
     {
-      id: REMINDER_NOTIFICATION_ID,
+      id: notificationId,
       title: 'Calo',
-      body: "Don't forget to log today's meals!",
+      body: mealReminderBody(meal),
       android: {
         channelId: CHANNEL_ID,
         pressAction: { id: 'default' },
@@ -102,34 +116,77 @@ export async function scheduleDailyReminder(
   );
 }
 
-export async function cancelDailyReminder(): Promise<void> {
-  await notifee.cancelNotification(REMINDER_NOTIFICATION_ID);
+export async function sendTestNotification(
+  meal: MealReminderMeal = 'breakfast',
+): Promise<{ error: string | null }> {
+  const granted = await requestNotificationPermission();
+  if (!granted) {
+    return {
+      error: 'Notification permission was denied. Enable notifications in Settings.',
+    };
+  }
+
+  await ensureChannel();
+  await notifee.displayNotification({
+    id: TEST_NOTIFICATION_ID,
+    title: 'Calo',
+    body: mealReminderBody(meal),
+    android: {
+      channelId: CHANNEL_ID,
+      pressAction: { id: 'default' },
+    },
+  });
+
+  return { error: null };
 }
 
 export async function syncDailyReminder(profile: UserProfile): Promise<void> {
-  if (!profile.reminderEnabled) {
-    await cancelDailyReminder();
+  const mealReminders = resolveMealReminders(profile);
+  const hasAnyEnabled = (['breakfast', 'lunch', 'dinner'] as MealReminderMeal[]).some(
+    meal => mealReminders[meal].enabled,
+  );
+
+  if (!hasAnyEnabled) {
+    await cancelAllMealReminders();
     return;
   }
-
   const granted = await requestNotificationPermission();
   if (!granted) {
     return;
   }
 
   const todayLog = await getTodayLog();
-  if (todayLog.entries.length > 0) {
-    await cancelDailyReminder();
-    return;
+  const loggedMeals = new Set(todayLog.entries.map(entry => entry.mealType));
+
+  const tasks: Promise<void>[] = [];
+
+  for (const meal of ['breakfast', 'lunch', 'dinner'] as MealReminderMeal[]) {
+    const setting = mealReminders[meal];
+    if (!setting.enabled || loggedMeals.has(meal)) {
+      tasks.push(cancelMealReminder(meal));
+      continue;
+    }
+
+    tasks.push(scheduleMealReminder(meal, setting.timeMinutes));
   }
 
-  await scheduleDailyReminder(
-    profile.reminderTimeMinutes ?? DEFAULT_REMINDER_MINUTES,
-  );
+  await Promise.all(tasks);
 }
 
 export async function onMealsLogged(profile: UserProfile): Promise<void> {
-  if (profile.reminderEnabled) {
-    await cancelDailyReminder();
+  await syncDailyReminder(profile);
+}
+
+export function formatMealRemindersSummary(mealReminders: MealReminders): string {
+  const enabled = (['breakfast', 'lunch', 'dinner'] as MealReminderMeal[]).filter(
+    meal => mealReminders[meal].enabled,
+  );
+
+  if (enabled.length === 0) {
+    return 'No meals selected';
   }
+
+  return enabled
+    .map(meal => `${MEAL_LABELS[meal]} at ${minutesToLabel(mealReminders[meal].timeMinutes)}`)
+    .join('\n');
 }
