@@ -1,24 +1,50 @@
 import type { WeightEntry } from '../types/weight';
 import { formatDateKey } from '../utils/date';
+import { createId } from '../utils/id';
 import {
-  deleteWeightEntryRow,
-  fetchWeightEntries,
-  upsertWeightEntry,
-} from './supabaseData';
+  localGetWeightEntries,
+  localSaveWeightEntries,
+} from './localStore';
+import { enqueueSync } from './syncQueue';
 
 export async function getWeightEntries(): Promise<WeightEntry[]> {
-  return fetchWeightEntries();
+  const entries = await localGetWeightEntries();
+  return [...entries].sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export async function addWeightEntry(
   weightKg: number,
   date: string = formatDateKey(),
 ): Promise<WeightEntry> {
-  return upsertWeightEntry(weightKg, date);
+  const entries = await localGetWeightEntries();
+  const existing = entries.find(e => e.date === date);
+  const entry: WeightEntry = existing
+    ? { ...existing, weightKg }
+    : { id: createId(), date, weightKg };
+
+  const next = existing
+    ? entries.map(e => (e.date === date ? entry : e))
+    : [entry, ...entries];
+
+  await localSaveWeightEntries(next);
+  await enqueueSync({
+    entity: 'weightEntry',
+    operation: existing ? 'update' : 'create',
+    payload: { entry },
+    coalesceKey: entry.id,
+  });
+  return entry;
 }
 
 export async function deleteWeightEntry(id: string): Promise<void> {
-  await deleteWeightEntryRow(id);
+  const entries = await localGetWeightEntries();
+  await localSaveWeightEntries(entries.filter(e => e.id !== id));
+  await enqueueSync({
+    entity: 'weightEntry',
+    operation: 'delete',
+    payload: { id },
+    coalesceKey: id,
+  });
 }
 
 export async function getLatestWeightEntry(): Promise<WeightEntry | null> {

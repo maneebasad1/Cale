@@ -44,7 +44,8 @@ export type IconName =
   | 'leaf-outline'
   | 'mail-outline'
   | 'lock-closed-outline'
-  | 'logo-google';
+  | 'logo-google'
+  | 'cloud-upload-outline';
 
 const TAB_ICONS: Record<
   'home' | 'calendar' | 'person',

@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { FormSection } from '../../components/onboarding/FormSection';
 import { OnboardingFooter } from '../../components/onboarding/OnboardingFooter';
-import { Button } from '../../components/Button';
 import { FoodSearchList } from '../../components/FoodSearchList';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { MealChipSelector } from '../../components/MealChipSelector';
@@ -19,37 +18,89 @@ import { onMealsLogged } from '../../services/notificationService';
 import {
   addEntry,
   getDailyLog,
-  getLastEntryForMeal,
   getProfile,
   updateEntry,
 } from '../../services/storage';
 import type { MealType } from '../../types';
-import { MEAL_LABELS } from '../../types';
 import type { EntryMode, FoodItem } from '../../types/food';
 import { formatDisplayDate, isToday } from '../../utils/date';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'AddEntry'>;
 type Route = RouteProp<MainStackParamList, 'AddEntry'>;
 
+function foodFromEntry(entry: {
+  foodId?: string;
+  foodName?: string;
+  calories: number;
+  servingLabel?: string;
+}): FoodItem {
+  return {
+    id: entry.foodId ?? 'custom-food',
+    name: entry.foodName ?? 'Food',
+    calories: entry.calories,
+    servingLabel: entry.servingLabel ?? '',
+    region: 'general',
+    source: entry.foodId?.startsWith('user-') ? 'user' : 'local',
+  };
+}
+
 export function AddEntryScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
-  const { date, entryId } = route.params;
+  const { date, entryId, prefillFood } = route.params;
   const isEditing = Boolean(entryId);
 
   const [mealType, setMealType] = useState<MealType>('breakfast');
   const [entryMode, setEntryMode] = useState<EntryMode>('food');
   const [calories, setCalories] = useState('');
-  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [selectedFoods, setSelectedFoods] = useState<FoodItem[]>([]);
   const [loaded, setLoaded] = useState(!entryId);
-  const [repeatLabel, setRepeatLabel] = useState<string | null>(null);
+
+  const selectedIds = useMemo(
+    () => selectedFoods.map(food => food.id),
+    [selectedFoods],
+  );
+  const selectedTotal = useMemo(
+    () => selectedFoods.reduce((sum, food) => sum + food.calories, 0),
+    [selectedFoods],
+  );
+  const isMulti = !isEditing && selectedFoods.length > 1;
 
   useEffect(() => {
     navigation.setOptions({
       title: isEditing ? 'Edit entry' : 'Add entry',
     });
   }, [navigation, isEditing]);
+
+  // Returning from Add food screen — add/select the new food and clear the param.
+  useEffect(() => {
+    if (!prefillFood) {
+      return;
+    }
+    setEntryMode('food');
+    setSelectedFoods(prev => {
+      if (prev.some(food => food.id === prefillFood.id)) {
+        return prev;
+      }
+      return [...prev, prefillFood];
+    });
+    navigation.setParams({ prefillFood: undefined });
+  }, [prefillFood, navigation]);
+
+  useEffect(() => {
+    if (entryMode !== 'food') {
+      return;
+    }
+    if (isMulti) {
+      setCalories(String(selectedTotal));
+      return;
+    }
+    if (selectedFoods.length === 1) {
+      setCalories(String(selectedFoods[0].calories));
+    } else if (selectedFoods.length === 0 && !isEditing) {
+      setCalories('');
+    }
+  }, [entryMode, isEditing, isMulti, selectedFoods, selectedTotal]);
 
   useEffect(() => {
     if (!entryId) {
@@ -69,143 +120,41 @@ export function AddEntryScreen() {
 
       if (entry.foodId) {
         const resolved = await resolveFoodById(entry.foodId);
-        setSelectedFood(
-          resolved ?? {
-            id: entry.foodId,
-            name: entry.foodName ?? 'Food',
-            calories: entry.calories,
-            servingLabel: entry.servingLabel ?? '',
-            region: 'general',
-            source: entry.foodId.startsWith('user-') ? 'user' : 'local',
-          },
-        );
+        setSelectedFoods([
+          resolved ?? foodFromEntry(entry),
+        ]);
       } else if (entry.foodName) {
-        setSelectedFood({
-          id: 'custom-food',
-          name: entry.foodName,
-          calories: entry.calories,
-          servingLabel: entry.servingLabel ?? '',
-          region: 'general',
-          source: 'local',
-        });
+        setSelectedFoods([foodFromEntry(entry)]);
       }
 
       setLoaded(true);
     });
   }, [date, entryId]);
 
-  const handleSelectFood = (food: FoodItem) => {
-    setSelectedFood(food);
-    setCalories(String(food.calories));
+  const handleToggleFood = (food: FoodItem) => {
+    setSelectedFoods(prev => {
+      const exists = prev.some(item => item.id === food.id);
+      if (exists) {
+        return prev.filter(item => item.id !== food.id);
+      }
+      // Editing a single entry — replace selection.
+      if (isEditing) {
+        return [food];
+      }
+      return [...prev, food];
+    });
   };
 
   const handleModeChange = (mode: EntryMode) => {
     setEntryMode(mode);
     if (mode === 'custom') {
-      setSelectedFood(null);
+      setSelectedFoods([]);
       if (!isEditing) {
         setCalories('');
       }
-    } else if (!selectedFood) {
+    } else if (selectedFoods.length === 0) {
       setCalories('');
     }
-  };
-
-  useEffect(() => {
-    if (isEditing) {
-      return;
-    }
-
-    getLastEntryForMeal(mealType, date).then(result => {
-      if (!result) {
-        setRepeatLabel(null);
-        return;
-      }
-
-      const label = result.entry.foodName
-        ? result.entry.foodName
-        : `${result.entry.calories} kcal`;
-      setRepeatLabel(`${MEAL_LABELS[mealType]} · ${label}`);
-    });
-  }, [date, isEditing, mealType]);
-
-  const applyRepeatEntry = async () => {
-    const result = await getLastEntryForMeal(mealType, date);
-    if (!result) {
-      return;
-    }
-
-    const { entry } = result;
-    setEntryMode(entry.entryMode ?? (entry.foodName ? 'food' : 'custom'));
-    setCalories(String(entry.calories));
-
-    if (entry.foodId) {
-      const resolved = await resolveFoodById(entry.foodId);
-      setSelectedFood(
-        resolved ?? {
-          id: entry.foodId,
-          name: entry.foodName ?? 'Food',
-          calories: entry.calories,
-          servingLabel: entry.servingLabel ?? '',
-          region: 'general',
-          source: entry.foodId.startsWith('user-') ? 'user' : 'local',
-        },
-      );
-    } else if (entry.foodName) {
-      setSelectedFood({
-        id: 'custom-food',
-        name: entry.foodName,
-        calories: entry.calories,
-        servingLabel: entry.servingLabel ?? '',
-        region: 'general',
-        source: 'local',
-      });
-    } else {
-      setSelectedFood(null);
-    }
-  };
-
-  const handlePrefillRepeat = () => {
-    applyRepeatEntry();
-  };
-
-  const handleQuickRepeatSave = () => {
-    Alert.alert(
-      'Repeat last entry?',
-      `Save the same ${MEAL_LABELS[mealType].toLowerCase()} as last time?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Save',
-          onPress: async () => {
-            const result = await getLastEntryForMeal(mealType, date);
-            if (!result) {
-              return;
-            }
-
-            const { entry } = result;
-            setSaving(true);
-            try {
-              await addEntry(date, {
-                mealType,
-                calories: entry.calories,
-                entryMode: entry.entryMode ?? (entry.foodName ? 'food' : 'custom'),
-                foodName: entry.foodName,
-                foodId: entry.foodId,
-                servingLabel: entry.servingLabel,
-              });
-              const profile = await getProfile();
-              if (profile) {
-                await onMealsLogged(profile);
-              }
-              navigation.goBack();
-            } finally {
-              setSaving(false);
-            }
-          },
-        },
-      ],
-    );
   };
 
   const handleQuickAddCalories = (amount: number) => {
@@ -214,30 +163,22 @@ export function AddEntryScreen() {
   };
 
   const isValid =
-    parseInt(calories, 10) > 0 &&
-    (entryMode === 'custom' || selectedFood !== null);
+    entryMode === 'custom'
+      ? parseInt(calories, 10) > 0
+      : selectedFoods.length > 0 &&
+        (isMulti || parseInt(calories, 10) > 0);
 
   const handleSave = useCallback(async () => {
-    const num = parseInt(calories, 10);
-    if (!num || num <= 0) {
-      return;
-    }
-    if (entryMode === 'food' && !selectedFood) {
-      return;
-    }
-
-    setSaving(true);
-    try {
+    if (entryMode === 'custom') {
+      const num = parseInt(calories, 10);
+      if (!num || num <= 0) {
+        return;
+      }
       const payload = {
         mealType,
         calories: num,
-        entryMode,
-        foodName: entryMode === 'food' ? selectedFood?.name : undefined,
-        foodId: entryMode === 'food' ? selectedFood?.id : undefined,
-        servingLabel:
-          entryMode === 'food' ? selectedFood?.servingLabel : undefined,
+        entryMode: 'custom' as const,
       };
-
       if (entryId) {
         await updateEntry(date, entryId, payload);
       } else {
@@ -248,9 +189,54 @@ export function AddEntryScreen() {
         }
       }
       navigation.goBack();
-    } finally {
-      setSaving(false);
+      return;
     }
+
+    if (!selectedFoods.length) {
+      return;
+    }
+
+    // Edit: one entry, allow adjusted calories.
+    if (entryId) {
+      const food = selectedFoods[0];
+      const num = parseInt(calories, 10) || food.calories;
+      if (num <= 0) {
+        return;
+      }
+      await updateEntry(date, entryId, {
+        mealType,
+        calories: num,
+        entryMode: 'food',
+        foodName: food.name,
+        foodId: food.id,
+        servingLabel: food.servingLabel,
+      });
+      navigation.goBack();
+      return;
+    }
+
+    // Add: one log entry per selected food (keeps each item distinct in Today's log).
+    for (let i = 0; i < selectedFoods.length; i += 1) {
+      const food = selectedFoods[i];
+      const kcal =
+        selectedFoods.length === 1
+          ? parseInt(calories, 10) || food.calories
+          : food.calories;
+      await addEntry(date, {
+        mealType,
+        calories: kcal,
+        entryMode: 'food',
+        foodName: food.name,
+        foodId: food.id,
+        servingLabel: food.servingLabel,
+      });
+    }
+
+    const profile = await getProfile();
+    if (profile) {
+      await onMealsLogged(profile);
+    }
+    navigation.goBack();
   }, [
     calories,
     date,
@@ -258,7 +244,7 @@ export function AddEntryScreen() {
     entryMode,
     mealType,
     navigation,
-    selectedFood,
+    selectedFoods,
   ]);
 
   if (!loaded) {
@@ -275,36 +261,27 @@ export function AddEntryScreen() {
     ? `Today · ${formatDisplayDate(date)}`
     : formatDisplayDate(date);
 
+  const saveTitle = isEditing
+    ? 'Save changes'
+    : selectedFoods.length > 1
+      ? `Save ${selectedFoods.length} entries`
+      : 'Save entry';
+
   return (
     <Screen edges={['bottom']}>
       <KeyboardAwareScreen
         contentContainerStyle={styles.content}
         footer={
           <OnboardingFooter
-            title={isEditing ? 'Save changes' : 'Save entry'}
+            title={saveTitle}
             onPress={handleSave}
             disabled={!isValid}
-            loading={saving}
           />
         }>
         <Text style={styles.dateLabel}>{dateLabel}</Text>
 
         <FormSection title="Meal">
           <MealChipSelector value={mealType} onChange={setMealType} />
-          {!isEditing && repeatLabel && (
-            <View style={styles.repeatRow}>
-              <TouchableOpacity
-                style={styles.repeatBtn}
-                onPress={handlePrefillRepeat}>
-                <Text style={styles.repeatText}>Prefill: {repeatLabel}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.repeatBtnSecondary}
-                onPress={handleQuickRepeatSave}>
-                <Text style={styles.repeatTextSecondary}>Save same</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </FormSection>
 
         <FormSection title="How to log">
@@ -320,32 +297,34 @@ export function AddEntryScreen() {
 
         {entryMode === 'food' && (
           <FormSection title="Search food">
+            {!isEditing ? (
+              <Text style={styles.multiHint}>
+                Tap one or more foods to add them to this meal.
+              </Text>
+            ) : null}
             <FoodSearchList
               variant="full"
-              selectedId={selectedFood?.id}
-              onSelect={handleSelectFood}
+              selectedIds={selectedIds}
+              onSelect={handleToggleFood}
+              showFrequent={false}
+              multiSelect={!isEditing}
+              onAddOwnFood={() =>
+                navigation.navigate('AddCustomFood', {
+                  selectOnSave: true,
+                  returnDate: date,
+                  returnEntryId: entryId,
+                })
+              }
             />
-            {selectedFood && (
-              <View style={styles.selectedFood}>
-                <Text style={styles.selectedLabel}>Selected</Text>
-                <Text style={styles.selectedName}>{selectedFood.name}</Text>
-                <Text style={styles.selectedMeta}>
-                  {selectedFood.servingLabel} · {selectedFood.calories} kcal
-                  {selectedFood.source === 'user'
-                    ? ' · My food'
-                    : selectedFood.sourceRef
-                      ? ` · ${selectedFood.sourceRef}`
-                      : ''}
-                </Text>
-              </View>
-            )}
           </FormSection>
         )}
 
         <FormSection
           title={
             entryMode === 'food'
-              ? 'Calories (adjust if needed)'
+              ? isMulti
+                ? 'Calories'
+                : 'Calories (adjust if needed)'
               : 'Calories'
           }>
           {entryMode === 'custom' && (
@@ -359,7 +338,10 @@ export function AddEntryScreen() {
               placeholder="0"
               placeholderTextColor={colors.textSecondary}
               keyboardType="number-pad"
-              editable={entryMode === 'custom' || selectedFood !== null}
+              editable={
+                entryMode === 'custom' ||
+                (selectedFoods.length === 1 && !isMulti)
+              }
             />
             <Text style={styles.suffix}>kcal</Text>
           </View>
@@ -368,14 +350,12 @@ export function AddEntryScreen() {
               Total calories for this meal or snack.
             </Text>
           )}
+          {isMulti ? (
+            <Text style={styles.hint}>
+              Each food is saved as its own entry with its listed calories.
+            </Text>
+          ) : null}
         </FormSection>
-
-        <Button
-          title="Cancel"
-          variant="secondary"
-          onPress={() => navigation.goBack()}
-          style={styles.cancelBtn}
-        />
       </KeyboardAwareScreen>
     </Screen>
   );
@@ -400,61 +380,10 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: spacing.lg,
   },
-  repeatBtn: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.noriMute,
-    borderRadius: radii.sm + 2,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  repeatBtnSecondary: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.sm + 2,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  repeatRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  repeatText: {
-    ...typography.caption,
-    fontFamily: fonts.bodySemiBold,
-    color: colors.primary,
-  },
-  repeatTextSecondary: {
-    ...typography.caption,
-    fontFamily: fonts.bodySemiBold,
-    color: colors.textSecondary,
-  },
-  selectedFood: {
-    marginTop: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.noriMute,
-    borderRadius: radii.sm + 2,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  selectedLabel: {
-    ...typography.overline,
-    color: colors.primary,
-    marginBottom: 2,
-  },
-  selectedName: {
-    ...typography.bodyMedium,
-    fontFamily: fonts.bodySemiBold,
-    color: colors.text,
-  },
-  selectedMeta: {
+  multiHint: {
     ...typography.caption,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginBottom: spacing.xs,
   },
   caloriesInput: {
     flexDirection: 'row',
@@ -481,9 +410,6 @@ const styles = StyleSheet.create({
   hint: {
     ...typography.caption,
     color: colors.textSecondary,
-    marginTop: spacing.sm,
-  },
-  cancelBtn: {
     marginTop: spacing.sm,
   },
 });

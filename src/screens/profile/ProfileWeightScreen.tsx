@@ -27,7 +27,6 @@ export function ProfileWeightScreen() {
   const [weightUnit, setWeightUnit] = useState<'kg' | 'lb'>('kg');
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
   const [newWeight, setNewWeight] = useState('');
-  const [saving, setSaving] = useState(false);
 
   const loadData = useCallback(async () => {
     const profile = await getProfile();
@@ -53,20 +52,15 @@ export function ProfileWeightScreen() {
 
     const weightKg = weightUnit === 'kg' ? weightNum : lbToKg(weightNum);
 
-    setSaving(true);
-    try {
-      await addWeightEntry(weightKg);
-      const profile = await getProfile();
-      if (profile) {
-        const updated = buildUpdatedProfile(profile, { weightKg });
-        await saveProfile(updated);
-      }
-      setNewWeight('');
-      await loadData();
-      Alert.alert('Weight logged', 'Your weight has been recorded.');
-    } finally {
-      setSaving(false);
+    await addWeightEntry(weightKg);
+    const profile = await getProfile();
+    if (profile) {
+      const updated = buildUpdatedProfile(profile, { weightKg });
+      await saveProfile(updated);
     }
+    setNewWeight('');
+    await loadData();
+    Alert.alert('Weight logged', 'Your weight has been recorded.');
   };
 
   const handleDelete = (entry: WeightEntry) => {
@@ -94,7 +88,6 @@ export function ProfileWeightScreen() {
         <Button
           title="Log today's weight"
           onPress={handleLogWeight}
-          loading={saving}
           style={styles.logBtn}
         />
 

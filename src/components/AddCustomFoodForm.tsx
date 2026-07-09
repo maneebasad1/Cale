@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from './Button';
 import { colors, radii, spacing, typography } from '../constants/theme';
 import {
@@ -11,7 +11,8 @@ import type { FoodItem } from '../types/food';
 interface AddCustomFoodFormProps {
   food?: FoodItem;
   onSaved: (food: FoodItem) => void;
-  onCancel: () => void;
+  /** Optional — prefer native back / header dismiss over an in-form Cancel. */
+  onCancel?: () => void;
 }
 
 export function AddCustomFoodForm({
@@ -25,7 +26,6 @@ export function AddCustomFoodForm({
     food ? String(food.calories) : '',
   );
   const [serving, setServing] = useState(food?.servingLabel ?? '');
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setName(food?.name ?? '');
@@ -41,23 +41,18 @@ export function AddCustomFoodForm({
       return;
     }
 
-    setSaving(true);
-    try {
-      const payload = {
-        name: name.trim(),
-        calories: caloriesNum,
-        servingLabel: serving.trim() || undefined,
-      };
+    const payload = {
+      name: name.trim(),
+      calories: caloriesNum,
+      servingLabel: serving.trim() || undefined,
+    };
 
-      const saved = food
-        ? await updateCustomFood(food.id, payload)
-        : await addCustomFood(payload);
+    const saved = food
+      ? await updateCustomFood(food.id, payload)
+      : await addCustomFood(payload);
 
-      if (saved) {
-        onSaved(saved);
-      }
-    } finally {
-      setSaving(false);
+    if (saved) {
+      onSaved(saved);
     }
   };
 
@@ -109,18 +104,17 @@ export function AddCustomFoodForm({
         </View>
       </View>
 
-      <View style={styles.actions}>
-        <Button
-          title={isEditing ? 'Update food' : 'Save food'}
-          onPress={handleSave}
-          disabled={!canSave}
-          loading={saving}
-          style={styles.saveBtn}
-        />
-        <TouchableOpacity onPress={onCancel} style={styles.cancelBtn}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
+      <Button
+        title={isEditing ? 'Save changes' : 'Save food'}
+        onPress={handleSave}
+        disabled={!canSave}
+        style={styles.saveBtn}
+      />
+      {onCancel ? (
+        <Text style={styles.dismissHint} onPress={onCancel}>
+          Close without saving
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -129,10 +123,10 @@ const styles = StyleSheet.create({
   container: {
     marginTop: spacing.sm,
     padding: spacing.md,
-    backgroundColor: colors.noriMute,
+    backgroundColor: colors.surface,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.border,
   },
   title: {
     ...typography.label,
@@ -150,7 +144,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   input: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: colors.border,
@@ -172,7 +166,7 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: colors.border,
@@ -192,19 +186,15 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginLeft: spacing.xs,
   },
-  actions: {
-    gap: spacing.xs,
-  },
   saveBtn: {
-    minHeight: 44,
-    paddingVertical: spacing.sm,
+    minHeight: 48,
+    marginTop: spacing.xs,
   },
-  cancelBtn: {
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-  },
-  cancelText: {
-    ...typography.label,
+  dismissHint: {
+    ...typography.caption,
     color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    paddingVertical: spacing.xs,
   },
 });

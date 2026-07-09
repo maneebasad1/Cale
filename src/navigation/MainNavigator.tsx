@@ -5,6 +5,7 @@ import { TabIcon } from '../components/Icon';
 import { APP_NAME } from '../constants/branding';
 import { colors, fonts } from '../constants/theme';
 import { AddEntryScreen } from '../screens/entry/AddEntryScreen';
+import { AddCustomFoodScreen } from '../screens/foods/AddCustomFoodScreen';
 import { MyFoodsScreen } from '../screens/foods/MyFoodsScreen';
 import { DayDetailScreen } from '../screens/history/DayDetailScreen';
 import { HistoryScreen } from '../screens/history/HistoryScreen';
@@ -108,6 +109,11 @@ export function MainNavigator() {
         name="AddEntry"
         component={AddEntryScreen}
         options={{ title: 'Add entry' }}
+      />
+      <MainStack.Screen
+        name="AddCustomFood"
+        component={AddCustomFoodScreen}
+        options={{ title: 'Add food' }}
       />
       <MainStack.Screen
         name="MyFoods"

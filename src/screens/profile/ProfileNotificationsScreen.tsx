@@ -34,7 +34,6 @@ export function ProfileNotificationsScreen() {
   );
   const [activePickerMeal, setActivePickerMeal] =
     useState<MealReminderMeal | null>(null);
-  const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
 
   const loadProfile = useCallback(async () => {
@@ -67,27 +66,22 @@ export function ProfileNotificationsScreen() {
       return;
     }
 
-    setSaving(true);
-    try {
-      const updated: UserProfile = {
-        ...profile,
-        mealReminders,
-        reminderEnabled: MEAL_REMINDER_MEALS.some(
-          meal => mealReminders[meal].enabled,
-        ),
-      };
-      await saveProfile(updated);
-      await syncDailyReminder(updated);
-      setProfile(updated);
-      Alert.alert(
-        'Notifications updated',
-        isAnyMealReminderEnabled(updated)
-          ? formatMealRemindersSummary(mealReminders)
-          : 'Meal reminders turned off.',
-      );
-    } finally {
-      setSaving(false);
-    }
+    const updated: UserProfile = {
+      ...profile,
+      mealReminders,
+      reminderEnabled: MEAL_REMINDER_MEALS.some(
+        meal => mealReminders[meal].enabled,
+      ),
+    };
+    await saveProfile(updated);
+    await syncDailyReminder(updated);
+    setProfile(updated);
+    Alert.alert(
+      'Notifications updated',
+      isAnyMealReminderEnabled(updated)
+        ? formatMealRemindersSummary(mealReminders)
+        : 'Meal reminders turned off.',
+    );
   };
 
   const handleTestNotification = async () => {
@@ -152,7 +146,6 @@ export function ProfileNotificationsScreen() {
         <Button
           title="Save changes"
           onPress={handleSave}
-          loading={saving}
           style={styles.saveBtn}
         />
 

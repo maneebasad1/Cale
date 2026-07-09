@@ -28,7 +28,6 @@ export function WeightCheckInBanner({
       ) / 10,
     ),
   );
-  const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     const num = parseFloat(weight);
@@ -37,15 +36,10 @@ export function WeightCheckInBanner({
       return;
     }
 
-    setSaving(true);
-    try {
-      const weightKg = weightUnit === 'kg' ? num : lbToKg(num);
-      await addWeightEntry(weightKg);
-      onLogged();
-      setExpanded(false);
-    } finally {
-      setSaving(false);
-    }
+    const weightKg = weightUnit === 'kg' ? num : lbToKg(num);
+    await addWeightEntry(weightKg);
+    onLogged();
+    setExpanded(false);
   };
 
   if (!expanded) {
@@ -90,7 +84,7 @@ export function WeightCheckInBanner({
         <Text style={styles.suffix}>{weightUnit}</Text>
       </View>
       <View style={styles.actions}>
-        <Button title="Save weight" onPress={handleSave} loading={saving} />
+        <Button title="Save weight" onPress={handleSave} />
         <TouchableOpacity onPress={() => setExpanded(false)}>
           <Text style={styles.cancel}>Cancel</Text>
         </TouchableOpacity>

@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { syncDailyReminder } from '../services/notificationService';
 import { getProfile } from '../services/storage';
+import { hydrateFromRemoteIfNeeded } from '../services/sync';
 import type { UserProfile } from '../types';
 import { useAuth } from './AuthContext';
 
@@ -29,6 +30,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated]);
 
   const refreshProfile = useCallback(async () => {
+    await hydrateFromRemoteIfNeeded();
     const p = await getProfile();
     setProfile(p);
     setOnboardingComplete(p?.onboardingComplete ?? false);

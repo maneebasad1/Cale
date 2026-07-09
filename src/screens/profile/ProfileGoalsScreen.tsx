@@ -16,7 +16,6 @@ export function ProfileGoalsScreen() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [goalType, setGoalType] = useState<GoalType>('lose');
   const [goalWeight, setGoalWeight] = useState('');
-  const [saving, setSaving] = useState(false);
 
   const loadProfile = useCallback(async () => {
     const p = await getProfile();
@@ -70,22 +69,17 @@ export function ProfileGoalsScreen() {
       return;
     }
 
-    setSaving(true);
-    try {
-      const updated = buildUpdatedProfile(profile, {
-        goalType,
-        goalWeightKg,
-      });
-      await saveProfile(updated);
-      setProfile(updated);
-      const targetMessage =
-        goalType === 'maintain'
-          ? `Your daily target is now ${updated.dailyTargetCalories.toLocaleString()} kcal/day (maintenance).`
-          : `Your daily target is now ${updated.dailyTargetCalories.toLocaleString()} kcal/day (${Math.abs(updated.calorieAdjustment)} kcal ${goalType === 'lose' ? 'deficit' : 'surplus'}).`;
-      Alert.alert('Goals updated', targetMessage);
-    } finally {
-      setSaving(false);
-    }
+    const updated = buildUpdatedProfile(profile, {
+      goalType,
+      goalWeightKg,
+    });
+    await saveProfile(updated);
+    setProfile(updated);
+    const targetMessage =
+      goalType === 'maintain'
+        ? `Your daily target is now ${updated.dailyTargetCalories.toLocaleString()} kcal/day (maintenance).`
+        : `Your daily target is now ${updated.dailyTargetCalories.toLocaleString()} kcal/day (${Math.abs(updated.calorieAdjustment)} kcal ${goalType === 'lose' ? 'deficit' : 'surplus'}).`;
+    Alert.alert('Goals updated', targetMessage);
   };
 
   if (!profile) {
@@ -145,7 +139,6 @@ export function ProfileGoalsScreen() {
         <Button
           title="Save changes"
           onPress={handleSave}
-          loading={saving}
           style={styles.saveBtn}
         />
       </KeyboardAwareScreen>

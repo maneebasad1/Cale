@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileMenuRow } from '../../components/profile/ProfileMenuRow';
 import { UserAvatar } from '../../components/profile/UserAvatar';
 import { Screen } from '../../components/Screen';
+import { SyncStatusIndicator } from '../../components/SyncStatusIndicator';
 import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import type { ProfileStackParamList } from '../../navigation/types';
@@ -66,6 +67,8 @@ export function ProfileScreen() {
           </Text>
           <Text style={styles.targetSub}>{goalLabel}</Text>
         </View>
+
+        <SyncStatusIndicator variant="row" />
 
         <View style={styles.menuGroup}>
           <ProfileMenuRow

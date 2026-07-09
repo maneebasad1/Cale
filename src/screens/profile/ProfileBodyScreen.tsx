@@ -41,7 +41,6 @@ export function ProfileBodyScreen() {
   const [age, setAge] = useState('');
   const [gender, setGender] = useState<Gender>('male');
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>('sedentary');
-  const [saving, setSaving] = useState(false);
 
   const loadProfile = useCallback(async () => {
     const p = await getProfile();
@@ -101,26 +100,21 @@ export function ProfileBodyScreen() {
 
     const weightKg = weightUnit === 'kg' ? weightNum : lbToKg(weightNum);
 
-    setSaving(true);
-    try {
-      const updated = buildUpdatedProfile(profile, {
-        weightKg,
-        heightCm,
-        age: ageNum,
-        gender,
-        activityLevel,
-        weightUnit,
-        heightUnit,
-      });
-      await saveProfile(updated);
-      setProfile(updated);
-      Alert.alert(
-        'Settings saved',
-        `Your daily target is now ${updated.dailyTargetCalories.toLocaleString()} kcal/day.`,
-      );
-    } finally {
-      setSaving(false);
-    }
+    const updated = buildUpdatedProfile(profile, {
+      weightKg,
+      heightCm,
+      age: ageNum,
+      gender,
+      activityLevel,
+      weightUnit,
+      heightUnit,
+    });
+    await saveProfile(updated);
+    setProfile(updated);
+    Alert.alert(
+      'Settings saved',
+      `Your daily target is now ${updated.dailyTargetCalories.toLocaleString()} kcal/day.`,
+    );
   };
 
   if (!profile) {
@@ -275,7 +269,6 @@ export function ProfileBodyScreen() {
         <Button
           title="Save changes"
           onPress={handleSave}
-          loading={saving}
           style={styles.saveBtn}
         />
       </KeyboardAwareScreen>

@@ -11,6 +11,7 @@ import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider } from './src/context/AppContext';
 import { AuthProvider } from './src/context/AuthContext';
+import { SyncProvider } from './src/context/SyncContext';
 import { colors } from './src/constants/theme';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
@@ -22,9 +23,11 @@ function App() {
         backgroundColor={colors.surface}
       />
       <AuthProvider>
-        <AppProvider>
-          <RootNavigator />
-        </AppProvider>
+        <SyncProvider>
+          <AppProvider>
+            <RootNavigator />
+          </AppProvider>
+        </SyncProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

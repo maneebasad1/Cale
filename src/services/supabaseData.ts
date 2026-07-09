@@ -2,7 +2,6 @@ import { getSupabase } from '../lib/supabase';
 import type { CalorieEntry, DailyLog, UserProfile } from '../types';
 import type { FoodItem } from '../types/food';
 import type { WeightEntry } from '../types/weight';
-import type { CustomFoodInput } from './customFoodService';
 import {
   CalorieEntryRow,
   CustomFoodRow,
@@ -21,6 +20,14 @@ async function getUserId(): Promise<string> {
     throw new Error('Not authenticated');
   }
   return data.user.id;
+}
+
+export async function tryGetUserId(): Promise<string | null> {
+  try {
+    return await getUserId();
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchProfile(): Promise<UserProfile | null> {
@@ -93,15 +100,15 @@ export async function fetchDailyLog(date: string): Promise<DailyLog> {
   };
 }
 
-export async function insertEntry(
+/** Upsert by client-generated UUID so retries don't create duplicates. */
+export async function upsertCalorieEntry(
   date: string,
-  entry: Omit<CalorieEntry, 'id' | 'timestamp'>,
-): Promise<CalorieEntry> {
+  entry: CalorieEntry,
+): Promise<void> {
   const userId = await getUserId();
-  const loggedAt = new Date().toISOString();
-  const { data, error } = await getSupabase()
-    .from('calorie_entries')
-    .insert({
+  const { error } = await getSupabase().from('calorie_entries').upsert(
+    {
+      id: entry.id,
       user_id: userId,
       log_date: date,
       meal_type: entry.mealType,
@@ -110,47 +117,10 @@ export async function insertEntry(
       food_name: entry.foodName ?? null,
       food_id: entry.foodId ?? null,
       serving_label: entry.servingLabel ?? null,
-      logged_at: loggedAt,
-    })
-    .select('*')
-    .single();
-
-  if (error || !data) {
-    throw error ?? new Error('Failed to insert entry');
-  }
-  return entryFromRow(data as CalorieEntryRow);
-}
-
-export async function patchEntry(
-  entryId: string,
-  updates: Partial<
-    Pick<
-      CalorieEntry,
-      | 'mealType'
-      | 'calories'
-      | 'entryMode'
-      | 'foodName'
-      | 'foodId'
-      | 'servingLabel'
-    >
-  >,
-): Promise<void> {
-  const userId = await getUserId();
-  const payload: Record<string, unknown> = {};
-  if (updates.mealType !== undefined) payload.meal_type = updates.mealType;
-  if (updates.calories !== undefined) payload.calories = updates.calories;
-  if (updates.entryMode !== undefined) payload.entry_mode = updates.entryMode;
-  if (updates.foodName !== undefined) payload.food_name = updates.foodName;
-  if (updates.foodId !== undefined) payload.food_id = updates.foodId;
-  if (updates.servingLabel !== undefined) {
-    payload.serving_label = updates.servingLabel;
-  }
-
-  const { error } = await getSupabase()
-    .from('calorie_entries')
-    .update(payload)
-    .eq('id', entryId)
-    .eq('user_id', userId);
+      logged_at: entry.timestamp,
+    },
+    { onConflict: 'id' },
+  );
 
   if (error) {
     throw error;
@@ -170,18 +140,6 @@ export async function removeEntry(entryId: string): Promise<void> {
   }
 }
 
-export async function insertEntries(
-  date: string,
-  entries: Omit<CalorieEntry, 'id' | 'timestamp'>[],
-): Promise<number> {
-  let count = 0;
-  for (const entry of entries) {
-    await insertEntry(date, entry);
-    count += 1;
-  }
-  return count;
-}
-
 export async function fetchCustomFoods(): Promise<FoodItem[]> {
   const userId = await getUserId();
   const { data, error } = await getSupabase()
@@ -196,65 +154,22 @@ export async function fetchCustomFoods(): Promise<FoodItem[]> {
   return (data as CustomFoodRow[]).map(customFoodFromRow);
 }
 
-export async function fetchCustomFoodById(
-  id: string,
-): Promise<FoodItem | undefined> {
+export async function upsertCustomFood(food: FoodItem): Promise<void> {
   const userId = await getUserId();
-  const { data, error } = await getSupabase()
-    .from('custom_foods')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('id', id)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-  return data ? customFoodFromRow(data as CustomFoodRow) : undefined;
-}
-
-export async function insertCustomFood(
-  input: CustomFoodInput,
-): Promise<FoodItem> {
-  const userId = await getUserId();
-  const { data, error } = await getSupabase()
-    .from('custom_foods')
-    .insert({
+  const { error } = await getSupabase().from('custom_foods').upsert(
+    {
+      id: food.id,
       user_id: userId,
-      name: input.name.trim(),
-      calories: input.calories,
-      serving_label: input.servingLabel?.trim() || '1 serving',
-    })
-    .select('*')
-    .single();
-
-  if (error || !data) {
-    throw error ?? new Error('Failed to save food');
-  }
-  return customFoodFromRow(data as CustomFoodRow);
-}
-
-export async function updateCustomFoodRow(
-  id: string,
-  input: CustomFoodInput,
-): Promise<FoodItem | undefined> {
-  const userId = await getUserId();
-  const { data, error } = await getSupabase()
-    .from('custom_foods')
-    .update({
-      name: input.name.trim(),
-      calories: input.calories,
-      serving_label: input.servingLabel?.trim() || '1 serving',
-    })
-    .eq('id', id)
-    .eq('user_id', userId)
-    .select('*')
-    .maybeSingle();
+      name: food.name.trim(),
+      calories: food.calories,
+      serving_label: food.servingLabel?.trim() || '1 serving',
+    },
+    { onConflict: 'id' },
+  );
 
   if (error) {
     throw error;
   }
-  return data ? customFoodFromRow(data as CustomFoodRow) : undefined;
 }
 
 export async function deleteCustomFoodRow(id: string): Promise<void> {
@@ -284,28 +199,38 @@ export async function fetchWeightEntries(): Promise<WeightEntry[]> {
   return (data as WeightEntryRow[]).map(weightFromRow);
 }
 
-export async function upsertWeightEntry(
-  weightKg: number,
-  date: string,
-): Promise<WeightEntry> {
+export async function upsertWeightEntryRemote(
+  entry: WeightEntry,
+): Promise<void> {
   const userId = await getUserId();
-  const { data, error } = await getSupabase()
-    .from('weight_entries')
-    .upsert(
-      {
-        user_id: userId,
-        log_date: date,
-        weight_kg: weightKg,
-      },
-      { onConflict: 'user_id,log_date' },
-    )
-    .select('*')
-    .single();
+  // Prefer id conflict; also unique on (user_id, log_date).
+  const { error } = await getSupabase().from('weight_entries').upsert(
+    {
+      id: entry.id,
+      user_id: userId,
+      log_date: entry.date,
+      weight_kg: entry.weightKg,
+    },
+    { onConflict: 'id' },
+  );
 
-  if (error || !data) {
-    throw error ?? new Error('Failed to save weight');
+  if (error) {
+    // Fallback for rows that already exist under a different id for that date.
+    const { error: conflictError } = await getSupabase()
+      .from('weight_entries')
+      .upsert(
+        {
+          id: entry.id,
+          user_id: userId,
+          log_date: entry.date,
+          weight_kg: entry.weightKg,
+        },
+        { onConflict: 'user_id,log_date' },
+      );
+    if (conflictError) {
+      throw conflictError;
+    }
   }
-  return weightFromRow(data as WeightEntryRow);
 }
 
 export async function deleteWeightEntryRow(id: string): Promise<void> {

@@ -1,4 +1,5 @@
 import { getSupabase } from '../lib/supabase';
+import { resetLocalDataOnSignOut } from '../context/SyncContext';
 import { signOutGoogle } from './googleAuth';
 
 export async function deleteAccount(): Promise<{ error: string | null }> {
@@ -12,6 +13,7 @@ export async function deleteAccount(): Promise<{ error: string | null }> {
 
     await signOutGoogle();
     await supabase.auth.signOut();
+    await resetLocalDataOnSignOut();
     return { error: null };
   } catch (error) {
     const message =

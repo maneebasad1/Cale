@@ -16,8 +16,10 @@ import { Icon } from '../../components/Icon';
 import { ProgressRing } from '../../components/ProgressRing';
 import { Screen } from '../../components/Screen';
 import { StreakBadge } from '../../components/StreakBadge';
+import { SyncStatusIndicator } from '../../components/SyncStatusIndicator';
 import { WeightCheckInBanner } from '../../components/WeightCheckInBanner';
 import { colors, radii, spacing, typography } from '../../constants/theme';
+import { drainSyncQueue } from '../../services/sync';
 import { useAddEntryNavigation } from '../../hooks/useAddEntryNavigation';
 import { useMyFoodsNavigation } from '../../hooks/useMyFoodsNavigation';
 import {
@@ -82,6 +84,7 @@ export function HomeScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     await loadData();
+    void drainSyncQueue();
     setRefreshing(false);
   };
 
@@ -124,15 +127,18 @@ export function HomeScreen() {
         }>
         <View style={styles.headerWrap}>
           <BrandLogo size="sm" layout="row" style={styles.brand} />
-          <TouchableOpacity
-            onPress={openMyFoods}
-            style={styles.myFoodsBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityLabel="My Foods"
-            accessibilityRole="button">
-            <Icon name="nutrition-outline" size={18} color={colors.primary} />
-            <Text style={styles.myFoodsBtnText}>My Foods</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <SyncStatusIndicator variant="compact" />
+            <TouchableOpacity
+              onPress={openMyFoods}
+              style={styles.myFoodsBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="My Foods"
+              accessibilityRole="button">
+              <Icon name="nutrition-outline" size={18} color={colors.primary} />
+              <Text style={styles.myFoodsBtnText}>My Foods</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Text style={styles.date}>{formatDisplayDate(formatDateKey())}</Text>
@@ -187,6 +193,11 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     width: undefined,
     flex: 0,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   myFoodsBtn: {
     flexDirection: 'row',

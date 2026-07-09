@@ -135,3 +135,12 @@ grant execute on function public.delete_own_account() to authenticated;
 
 -- If you already deployed an older schema, run:
 -- alter table public.profiles add column if not exists meal_reminders jsonb;
+
+-- ---------------------------------------------------------------------------
+-- Local-first sync notes (app writes AsyncStorage first, then upserts here):
+-- - calorie_entries / custom_foods / weight_entries use client-generated UUIDs
+--   as primary keys so retries upsert instead of duplicating.
+-- - Conflict policy: last-write-wins (single-user / single-device). No merge.
+-- - Optional: add updated_at to calorie_entries / custom_foods / weight_entries
+--   if you later need cross-device LWW comparisons.
+-- ---------------------------------------------------------------------------

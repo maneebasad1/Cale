@@ -8,22 +8,26 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AddCustomFoodForm } from '../../components/AddCustomFoodForm';
 import { Button } from '../../components/Button';
 import { EmptyState } from '../../components/EmptyState';
 import { Screen } from '../../components/Screen';
 import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
+import type { MainStackParamList } from '../../navigation/types';
 import {
   deleteCustomFood,
   getCustomFoods,
 } from '../../services/customFoodService';
 import type { FoodItem } from '../../types/food';
 
+type Nav = NativeStackNavigationProp<MainStackParamList, 'MyFoods'>;
+
 export function MyFoodsScreen() {
+  const navigation = useNavigation<Nav>();
   const [foods, setFoods] = useState<FoodItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [showAddForm, setShowAddForm] = useState(false);
   const [editingFood, setEditingFood] = useState<FoodItem | null>(null);
 
   const loadFoods = useCallback(async () => {
@@ -43,18 +47,12 @@ export function MyFoodsScreen() {
     setRefreshing(false);
   };
 
-  const closeForm = () => {
-    setShowAddForm(false);
-    setEditingFood(null);
-  };
-
   const handleSaved = async () => {
-    closeForm();
+    setEditingFood(null);
     await loadFoods();
   };
 
   const handleEdit = (food: FoodItem) => {
-    setShowAddForm(false);
     setEditingFood(food);
   };
 
@@ -70,7 +68,7 @@ export function MyFoodsScreen() {
           onPress: async () => {
             await deleteCustomFood(food.id);
             if (editingFood?.id === food.id) {
-              closeForm();
+              setEditingFood(null);
             }
             await loadFoods();
           },
@@ -78,8 +76,6 @@ export function MyFoodsScreen() {
       ],
     );
   };
-
-  const formVisible = showAddForm || editingFood !== null;
 
   return (
     <Screen edges={['bottom']}>
@@ -97,22 +93,19 @@ export function MyFoodsScreen() {
           Foods you save here show up in search when you log a meal.
         </Text>
 
-        {!formVisible && (
+        {!editingFood && (
           <Button
-            title="+ Add food"
-            onPress={() => {
-              setEditingFood(null);
-              setShowAddForm(true);
-            }}
+            title="Add food"
+            onPress={() => navigation.navigate('AddCustomFood')}
             style={styles.addBtn}
           />
         )}
 
-        {formVisible && (
+        {editingFood && (
           <AddCustomFoodForm
-            food={editingFood ?? undefined}
+            food={editingFood}
             onSaved={handleSaved}
-            onCancel={closeForm}
+            onCancel={() => setEditingFood(null)}
           />
         )}
 

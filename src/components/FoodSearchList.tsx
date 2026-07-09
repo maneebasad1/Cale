@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { AddCustomFoodForm } from './AddCustomFoodForm';
+import { useFocusEffect } from '@react-navigation/native';
 import { FrequentFoodsRow } from './FrequentFoodsRow';
 import { Icon } from './Icon';
 import { getFrequentFoods } from '../services/frequentFoods';
@@ -19,26 +19,45 @@ import { FOOD_REGION_LABELS } from '../types/food';
 import { colors, fonts, radii, spacing, typography } from '../constants/theme';
 
 interface FoodSearchListProps {
-  selectedId?: string | null;
+  /** Selected food ids (supports one or many). */
+  selectedIds?: string[];
   onSelect: (food: FoodItem) => void;
   variant?: 'compact' | 'full';
+  /** Show the "Your usual" frequent-foods row. Default true. */
+  showFrequent?: boolean;
+  /** Called when the user taps "Add your own food". */
+  onAddOwnFood?: () => void;
+  /** When true, rows show checkbox affordance for multi-pick. Default true. */
+  multiSelect?: boolean;
 }
 
 export function FoodSearchList({
-  selectedId,
+  selectedIds = [],
   onSelect,
   variant = 'compact',
+  showFrequent = true,
+  onAddOwnFood,
+  multiSelect = true,
 }: FoodSearchListProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showAddForm, setShowAddForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [frequentFoods, setFrequentFoods] = useState<FoodItem[]>([]);
+  const selectedSet = new Set(selectedIds);
+
+  useFocusEffect(
+    useCallback(() => {
+      setRefreshKey(k => k + 1);
+    }, []),
+  );
 
   useEffect(() => {
+    if (!showFrequent) {
+      return;
+    }
     getFrequentFoods().then(setFrequentFoods);
-  }, [refreshKey]);
+  }, [refreshKey, showFrequent]);
 
   const loadResults = useCallback(async (searchQuery: string) => {
     setLoading(true);
@@ -52,12 +71,6 @@ export function FoodSearchList({
     return () => clearTimeout(timer);
   }, [query, refreshKey, loadResults]);
 
-  const handleCustomFoodSaved = (food: FoodItem) => {
-    setShowAddForm(false);
-    setRefreshKey(k => k + 1);
-    onSelect(food);
-  };
-
   const getMetaLabel = (item: FoodItem) => {
     if (item.source === 'user') {
       return `My food · ${item.servingLabel}`;
@@ -69,7 +82,9 @@ export function FoodSearchList({
 
   const emptyMessage = query.trim()
     ? 'Nothing matched. Try another name, or add your own food.'
-    : 'Search the catalog, or add a food you cook often.';
+    : multiSelect
+      ? 'Search and tap foods to add them to this meal.'
+      : 'Search the catalog, or add a food you cook often.';
 
   const emptyTitle = query.trim() ? 'No matches' : 'Find a food';
 
@@ -84,13 +99,24 @@ export function FoodSearchList({
   );
 
   const renderItem = (item: FoodItem) => {
-    const selected = selectedId === item.id;
+    const selected = selectedSet.has(item.id);
     return (
       <TouchableOpacity
         key={item.id}
         style={[styles.row, selected && styles.rowSelected]}
         onPress={() => onSelect(item)}
-        activeOpacity={0.7}>
+        activeOpacity={0.7}
+        accessibilityRole={multiSelect ? 'checkbox' : 'button'}
+        accessibilityState={{ selected }}>
+        {multiSelect ? (
+          <View style={[styles.check, selected && styles.checkSelected]}>
+            {selected ? (
+              <Icon name="checkmark-circle" size={22} color={colors.primary} />
+            ) : (
+              <View style={styles.checkEmpty} />
+            )}
+          </View>
+        ) : null}
         <View style={styles.rowText}>
           <Text style={[styles.name, selected && styles.nameSelected]}>
             {item.name}
@@ -115,27 +141,25 @@ export function FoodSearchList({
         autoCorrect={false}
       />
 
-      {!showAddForm ? (
+      {onAddOwnFood ? (
         <TouchableOpacity
           style={styles.addOwnBtn}
-          onPress={() => setShowAddForm(true)}
-          activeOpacity={0.7}>
-          <Text style={styles.addOwnText}>+ Add your own food</Text>
+          onPress={onAddOwnFood}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Add your own food">
+          <Icon name="add" size={16} color={colors.primary} />
+          <Text style={styles.addOwnText}>Add your own food</Text>
         </TouchableOpacity>
-      ) : (
-        <AddCustomFoodForm
-          onSaved={handleCustomFoodSaved}
-          onCancel={() => setShowAddForm(false)}
-        />
-      )}
+      ) : null}
 
-      {!query && frequentFoods.length > 0 && (
+      {showFrequent && !query && frequentFoods.length > 0 ? (
         <FrequentFoodsRow
           foods={frequentFoods}
-          selectedId={selectedId}
+          selectedIds={selectedIds}
           onSelect={onSelect}
         />
-      )}
+      ) : null}
 
       {loading ? (
         <ActivityIndicator
@@ -182,7 +206,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   addOwnBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     alignSelf: 'flex-start',
+    gap: spacing.xs,
     marginBottom: spacing.sm,
     paddingVertical: spacing.xs,
   },
@@ -197,7 +224,7 @@ const styles = StyleSheet.create({
     maxHeight: 160,
   },
   listFull: {
-    maxHeight: 200,
+    maxHeight: 220,
   },
   empty: {
     alignItems: 'center',
@@ -234,10 +261,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
+    gap: spacing.sm,
   },
   rowSelected: {
     borderColor: colors.primary,
     backgroundColor: colors.noriMute,
+  },
+  check: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkSelected: {},
+  checkEmpty: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.border,
   },
   rowText: {
     flex: 1,

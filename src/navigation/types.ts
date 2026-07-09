@@ -42,7 +42,20 @@ export type OnboardingStackParamList = {
 
 export type MainStackParamList = {
   Tabs: undefined;
-  AddEntry: { date: string; entryId?: string };
+  AddEntry: {
+    date: string;
+    entryId?: string;
+    /** Set when returning from AddCustomFood so the new food is selected. */
+    prefillFood?: import('../types/food').FoodItem;
+  };
+  AddCustomFood:
+    | {
+        selectOnSave?: boolean;
+        /** Required when selectOnSave — used to navigate back to AddEntry. */
+        returnDate?: string;
+        returnEntryId?: string;
+      }
+    | undefined;
   MyFoods: undefined;
 };
 

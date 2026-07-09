@@ -1,54 +1,64 @@
 import type { CalorieEntry, DailyLog, UserProfile } from '../types';
 import { formatDateKey } from '../utils/date';
-import * as db from './supabaseData';
+import { createId } from '../utils/id';
+import {
+  localDeleteEntry,
+  localGetAllLogs,
+  localGetDailyLog,
+  localGetProfile,
+  localSaveDailyLog,
+  localSaveProfile,
+  localUpsertEntry,
+} from './localStore';
+import { enqueueSync } from './syncQueue';
 
 export async function getProfile(): Promise<UserProfile | null> {
-  return db.fetchProfile();
+  return localGetProfile();
 }
 
 export async function saveProfile(profile: UserProfile): Promise<void> {
-  await db.upsertProfile(profile);
+  await localSaveProfile(profile);
+  await enqueueSync({
+    entity: 'profile',
+    operation: 'update',
+    payload: { profile },
+    coalesceKey: 'profile',
+  });
 }
 
 export async function getAllLogs(): Promise<Record<string, DailyLog>> {
-  return db.fetchAllLogs();
+  return localGetAllLogs();
 }
 
 export async function getDailyLog(date: string): Promise<DailyLog> {
-  return db.fetchDailyLog(date);
+  return localGetDailyLog(date);
 }
 
 export async function saveDailyLog(log: DailyLog): Promise<void> {
-  const existing = await db.fetchDailyLog(log.date);
-  const existingIds = new Set(existing.entries.map(entry => entry.id));
-  const nextIds = new Set(log.entries.map(entry => entry.id));
+  const existing = await localGetDailyLog(log.date);
+  const nextIds = new Set(log.entries.map(e => e.id));
 
   for (const entry of existing.entries) {
     if (!nextIds.has(entry.id)) {
-      await db.removeEntry(entry.id);
+      await enqueueSync({
+        entity: 'calorieEntry',
+        operation: 'delete',
+        payload: { id: entry.id, date: log.date },
+        coalesceKey: entry.id,
+      });
     }
   }
 
+  await localSaveDailyLog(log);
+
   for (const entry of log.entries) {
-    if (existingIds.has(entry.id)) {
-      await db.patchEntry(entry.id, {
-        mealType: entry.mealType,
-        calories: entry.calories,
-        entryMode: entry.entryMode,
-        foodName: entry.foodName,
-        foodId: entry.foodId,
-        servingLabel: entry.servingLabel,
-      });
-    } else {
-      await db.insertEntry(log.date, {
-        mealType: entry.mealType,
-        calories: entry.calories,
-        entryMode: entry.entryMode,
-        foodName: entry.foodName,
-        foodId: entry.foodId,
-        servingLabel: entry.servingLabel,
-      });
-    }
+    const wasExisting = existing.entries.some(e => e.id === entry.id);
+    await enqueueSync({
+      entity: 'calorieEntry',
+      operation: wasExisting ? 'update' : 'create',
+      payload: { date: log.date, entry },
+      coalesceKey: entry.id,
+    });
   }
 }
 
@@ -56,7 +66,19 @@ export async function addEntry(
   date: string,
   entry: Omit<CalorieEntry, 'id' | 'timestamp'>,
 ): Promise<CalorieEntry> {
-  return db.insertEntry(date, entry);
+  const full: CalorieEntry = {
+    ...entry,
+    id: createId(),
+    timestamp: new Date().toISOString(),
+  };
+  await localUpsertEntry(date, full);
+  await enqueueSync({
+    entity: 'calorieEntry',
+    operation: 'create',
+    payload: { date, entry: full },
+    coalesceKey: full.id,
+  });
+  return full;
 }
 
 export async function updateEntry(
@@ -74,14 +96,32 @@ export async function updateEntry(
     >
   >,
 ): Promise<void> {
-  await db.patchEntry(entryId, updates);
+  const log = await localGetDailyLog(date);
+  const existing = log.entries.find(e => e.id === entryId);
+  if (!existing) {
+    return;
+  }
+  const next: CalorieEntry = { ...existing, ...updates };
+  await localUpsertEntry(date, next);
+  await enqueueSync({
+    entity: 'calorieEntry',
+    operation: 'update',
+    payload: { date, entry: next },
+    coalesceKey: entryId,
+  });
 }
 
 export async function deleteEntry(
   date: string,
   entryId: string,
 ): Promise<void> {
-  await db.removeEntry(entryId);
+  await localDeleteEntry(date, entryId);
+  await enqueueSync({
+    entity: 'calorieEntry',
+    operation: 'delete',
+    payload: { id: entryId, date },
+    coalesceKey: entryId,
+  });
 }
 
 export async function getTodayLog(): Promise<DailyLog> {
@@ -101,17 +141,19 @@ export async function copyDayEntries(
     return 0;
   }
 
-  return db.insertEntries(
-    toDate,
-    source.entries.map(entry => ({
+  let count = 0;
+  for (const entry of source.entries) {
+    await addEntry(toDate, {
       mealType: entry.mealType,
       calories: entry.calories,
       entryMode: entry.entryMode,
       foodName: entry.foodName,
       foodId: entry.foodId,
       servingLabel: entry.servingLabel,
-    })),
-  );
+    });
+    count += 1;
+  }
+  return count;
 }
 
 export async function getLastEntryForMeal(

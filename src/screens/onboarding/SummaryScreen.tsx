@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Icon } from '../../components/Icon';
@@ -33,7 +33,6 @@ export function SummaryScreen({ route }: Props) {
     weightUnit,
     heightUnit,
   } = route.params;
-  const [loading, setLoading] = useState(false);
   const { refreshProfile } = useApp();
 
   const isMaintain = goalType === 'maintain';
@@ -45,27 +44,22 @@ export function SummaryScreen({ route }: Props) {
     : `${dailyTargetCalories.toLocaleString()} kcal/day → ~${weeklyChange} kg/week ${isLoss ? 'loss' : 'gain'}`;
 
   const handleGetStarted = async () => {
-    setLoading(true);
-    try {
-      await saveProfile({
-        weightKg,
-        heightCm,
-        age,
-        gender,
-        activityLevel,
-        maintenanceCalories,
-        goalType,
-        goalWeightKg,
-        calorieAdjustment,
-        dailyTargetCalories,
-        weightUnit,
-        heightUnit,
-        onboardingComplete: true,
-      });
-      await refreshProfile();
-    } finally {
-      setLoading(false);
-    }
+    await saveProfile({
+      weightKg,
+      heightCm,
+      age,
+      gender,
+      activityLevel,
+      maintenanceCalories,
+      goalType,
+      goalWeightKg,
+      calorieAdjustment,
+      dailyTargetCalories,
+      weightUnit,
+      heightUnit,
+      onboardingComplete: true,
+    });
+    await refreshProfile();
   };
 
   return (
@@ -160,7 +154,6 @@ export function SummaryScreen({ route }: Props) {
       <OnboardingFooter
         title="Get started"
         onPress={handleGetStarted}
-        loading={loading}
       />
     </Screen>
   );

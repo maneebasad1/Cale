@@ -5,18 +5,20 @@ import type { FoodItem } from '../types/food';
 
 interface FrequentFoodsRowProps {
   foods: FoodItem[];
-  selectedId?: string | null;
+  selectedIds?: string[];
   onSelect: (food: FoodItem) => void;
 }
 
 export function FrequentFoodsRow({
   foods,
-  selectedId,
+  selectedIds = [],
   onSelect,
 }: FrequentFoodsRowProps) {
   if (!foods.length) {
     return null;
   }
+
+  const selectedSet = new Set(selectedIds);
 
   return (
     <View style={styles.container}>
@@ -26,13 +28,15 @@ export function FrequentFoodsRow({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.row}>
         {foods.map(food => {
-          const selected = selectedId === food.id;
+          const selected = selectedSet.has(food.id);
           return (
             <TouchableOpacity
               key={food.id}
               style={[styles.chip, selected && styles.chipSelected]}
               onPress={() => onSelect(food)}
-              activeOpacity={0.7}>
+              activeOpacity={0.7}
+              accessibilityRole="checkbox"
+              accessibilityState={{ selected }}>
               <Text
                 style={[styles.chipName, selected && styles.chipNameSelected]}
                 numberOfLines={1}>
