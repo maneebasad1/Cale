@@ -32,7 +32,7 @@ export function RootNavigator() {
   if (authLoading || (isAuthenticated && dataLoading)) {
     return (
       <View style={styles.loading}>
-        <BrandLogo size="lg" showTagline />
+        <BrandLogo size="lg" showTagline={false} />
       </View>
     );
   }
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: colors.primary,
     padding: spacing.lg,
   },
 });

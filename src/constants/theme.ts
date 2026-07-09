@@ -4,11 +4,11 @@
  */
 
 export const colors = {
-  /** Brand primary — brighter nori / jade */
-  primary: '#1A9B78',
-  primaryLight: '#2DB892',
-  primaryDark: '#147A5E',
-  nori: '#1A9B78',
+  /** Brand primary — from app icon (#317F36) */
+  primary: '#317F36',
+  primaryLight: '#3D9A44',
+  primaryDark: '#27662C',
+  nori: '#317F36',
 
   /** Accent — spice gold */
   saffron: '#D9A21B',
@@ -36,15 +36,15 @@ export const colors = {
   overMaintenance: '#C2512A',
 
   /** Semantic — on track */
-  success: '#1A9B78',
-  underMaintenance: '#1A9B78',
+  success: '#317F36',
+  underMaintenance: '#317F36',
 
   /** Progress mute tints */
-  chipBg: '#E0F5EE',
-  noriMute: '#E0F5EE',
+  chipBg: '#E8F3E9',
+  noriMute: '#E8F3E9',
   saffronMute: '#F8F0D8',
   chiliMute: '#F8E8E0',
-  chipSelected: '#1A9B78',
+  chipSelected: '#317F36',
 
   /** Near-target progress (~90–100%) */
   nearTarget: '#D9A21B',

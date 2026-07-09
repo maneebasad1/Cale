@@ -1,7 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { APP_NAME, APP_TAGLINE } from '../constants/branding';
-import { colors, fonts, radii, spacing, typography } from '../constants/theme';
+import { Image, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { APP_ICON, APP_TAGLINE } from '../constants/branding';
+import { colors, spacing, typography } from '../constants/theme';
 
 interface BrandLogoProps {
   size?: 'sm' | 'lg';
@@ -10,34 +10,34 @@ interface BrandLogoProps {
   style?: ViewStyle;
 }
 
+const ICON_SIZE = {
+  sm: { stacked: 72, row: 44 },
+  lg: { stacked: 120, row: 72 },
+} as const;
+
 export function BrandLogo({
   size = 'sm',
   layout = 'stacked',
   showTagline = false,
   style,
 }: BrandLogoProps) {
-  const isLarge = size === 'lg';
   const isRow = layout === 'row';
-  const badgeStyle = isLarge
-    ? isRow
-      ? styles.badgeRowLg
-      : styles.badgeLg
-    : isRow
-      ? styles.badgeSmRow
-      : styles.badgeSm;
-  const textStyle = isLarge
-    ? isRow
-      ? styles.nameRow
-      : styles.nameLg
-    : isRow
-      ? styles.nameSmRow
-      : styles.nameSm;
+  const iconSize = ICON_SIZE[size][isRow ? 'row' : 'stacked'];
 
   return (
     <View style={[styles.container, isRow && styles.containerRow, style]}>
-      <View style={[styles.badge, badgeStyle]}>
-        <Text style={textStyle}>{APP_NAME}</Text>
-      </View>
+      <Image
+        source={APP_ICON}
+        style={[
+          styles.icon,
+          {
+            width: iconSize,
+            height: iconSize,
+            borderRadius: iconSize * 0.22,
+          },
+        ]}
+        accessibilityLabel="CALE"
+      />
       {showTagline && (
         <Text style={[styles.tagline, isRow && styles.taglineRow]}>
           {APP_TAGLINE}
@@ -55,56 +55,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     width: '100%',
   },
-  badge: {
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeSm: {
-    minWidth: 88,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radii.lg,
-  },
-  badgeLg: {
-    minWidth: 140,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
-    borderRadius: radii.xl,
-  },
-  badgeSmRow: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-  },
-  badgeRowLg: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radii.lg,
-  },
-  nameSm: {
-    fontFamily: fonts.displayBold,
-    fontSize: 28,
-    color: colors.surface,
-    letterSpacing: 2,
-  },
-  nameSmRow: {
-    fontFamily: fonts.displayBold,
-    fontSize: 20,
-    color: colors.surface,
-    letterSpacing: 1.5,
-  },
-  nameLg: {
-    fontFamily: fonts.displayBold,
-    fontSize: 40,
-    color: colors.surface,
-    letterSpacing: 3,
-  },
-  nameRow: {
-    fontFamily: fonts.displayBold,
-    fontSize: 30,
-    color: colors.surface,
-    letterSpacing: 2,
+  icon: {
+    overflow: 'hidden',
   },
   tagline: {
     ...typography.body,
