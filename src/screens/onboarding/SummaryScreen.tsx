@@ -5,7 +5,7 @@ import { Icon } from '../../components/Icon';
 import { OnboardingFooter } from '../../components/onboarding/OnboardingFooter';
 import { OnboardingHeader } from '../../components/onboarding/OnboardingHeader';
 import { Screen } from '../../components/Screen';
-import { colors, spacing } from '../../constants/theme';
+import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import { useApp } from '../../context/AppContext';
 import { saveProfile } from '../../services/storage';
@@ -76,11 +76,11 @@ export function SummaryScreen({ route }: Props) {
         showsVerticalScrollIndicator={false}>
         <OnboardingHeader
           step={5}
-          title="Your plan is ready!"
+          title="Your plan is ready"
           subtitle={
             isMaintain
-              ? 'Your daily target is set to your maintenance calories.'
-              : "Here's a breakdown of your daily calorie targets."
+              ? 'Your daily target matches your maintenance calories.'
+              : 'Here’s your daily calorie target and how we got there.'
           }
         />
 
@@ -158,7 +158,7 @@ export function SummaryScreen({ route }: Props) {
       </ScrollView>
 
       <OnboardingFooter
-        title="Get Started"
+        title="Get started"
         onPress={handleGetStarted}
         loading={loading}
       />
@@ -174,37 +174,35 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     backgroundColor: colors.primary,
-    borderRadius: 20,
+    borderRadius: radii.xl,
     padding: spacing.xl,
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
   heroLabel: {
-    fontSize: 14,
+    ...typography.label,
     color: 'rgba(255,255,255,0.85)',
-    fontWeight: '500',
     marginBottom: spacing.xs,
   },
   heroValue: {
+    fontFamily: fonts.displayBold,
     fontSize: 52,
-    fontWeight: '700',
     color: colors.surface,
   },
   heroUnit: {
-    fontSize: 16,
+    ...typography.body,
     color: 'rgba(255,255,255,0.85)',
     marginTop: spacing.xs,
   },
   heroRange: {
-    fontSize: 13,
+    ...typography.caption,
     color: 'rgba(255,255,255,0.75)',
     marginTop: spacing.sm,
     textAlign: 'center',
   },
   reasoning: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.text,
-    lineHeight: 22,
     marginBottom: spacing.md,
     textAlign: 'center',
   },
@@ -216,25 +214,24 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radii.lg - 2,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
     gap: spacing.xs,
   },
   statLabel: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.textSecondary,
-    fontWeight: '500',
   },
   statValue: {
+    fontFamily: fonts.displayBold,
     fontSize: 22,
-    fontWeight: '700',
     color: colors.text,
   },
   goalCard: {
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radii.lg - 2,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -247,29 +244,25 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   goalTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text,
   },
   goalText: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.textSecondary,
-    lineHeight: 22,
     marginBottom: spacing.sm,
   },
   goalBold: {
-    fontWeight: '700',
+    fontFamily: fonts.bodyBold,
     color: colors.text,
   },
   goalEstimate: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.primary,
-    fontWeight: '500',
   },
   note: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 18,
   },
 });

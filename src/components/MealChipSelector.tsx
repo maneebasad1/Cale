@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, spacing } from '../constants/theme';
+import { Icon, MEAL_ICONS } from './Icon';
+import { colors, radii, spacing, typography } from '../constants/theme';
 import type { MealType } from '../types';
 import { MEAL_LABELS, MEAL_TYPES } from '../types';
 
@@ -19,7 +20,14 @@ export function MealChipSelector({ value, onChange }: MealChipSelectorProps) {
             key={mealType}
             style={[styles.chip, selected && styles.chipSelected]}
             onPress={() => onChange(mealType)}
-            activeOpacity={0.7}>
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}>
+            <Icon
+              name={MEAL_ICONS[mealType]}
+              size={16}
+              color={selected ? colors.surface : colors.primary}
+            />
             <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
               {MEAL_LABELS[mealType]}
             </Text>
@@ -37,9 +45,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: 20,
+    borderRadius: radii.pill,
     backgroundColor: colors.chipBg,
     borderWidth: 1,
     borderColor: 'transparent',
@@ -49,8 +60,7 @@ const styles = StyleSheet.create({
     borderColor: colors.chipSelected,
   },
   chipText: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.label,
     color: colors.primary,
   },
   chipTextSelected: {

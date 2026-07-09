@@ -1,7 +1,15 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { DayStat } from '../../utils/calorieStats';
-import { colors, spacing } from '../../constants/theme';
+import {
+  colors,
+  fonts,
+  getProgressTone,
+  progressColor,
+  radii,
+  spacing,
+  typography,
+} from '../../constants/theme';
 import { formatShortDate } from '../../utils/date';
 
 interface CalorieBarChartProps {
@@ -17,7 +25,9 @@ export function CalorieBarChart({ days, target }: CalorieBarChartProps) {
       <View style={styles.chart}>
         {days.map(day => {
           const heightPct = day.total > 0 ? (day.total / maxTotal) * 100 : 4;
-          const isOver = day.total > target;
+          const tone = getProgressTone(day.total, target);
+          const barColor =
+            day.total > 0 ? progressColor(tone) : colors.border;
           return (
             <View key={day.date} style={styles.barWrap}>
               <View style={styles.barTrack}>
@@ -26,9 +36,7 @@ export function CalorieBarChart({ days, target }: CalorieBarChartProps) {
                     styles.barFill,
                     {
                       height: `${heightPct}%`,
-                      backgroundColor: isOver
-                        ? colors.overMaintenance
-                        : colors.primary,
+                      backgroundColor: barColor,
                     },
                   ]}
                 />
@@ -38,14 +46,16 @@ export function CalorieBarChart({ days, target }: CalorieBarChartProps) {
           );
         })}
       </View>
-      <Text style={styles.targetLine}>Target: {target.toLocaleString()} kcal</Text>
+      <Text style={styles.targetLine}>
+        Target · {target.toLocaleString()} kcal
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
   },
   chart: {
     flexDirection: 'row',
@@ -62,23 +72,25 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 90,
     justifyContent: 'flex-end',
-    backgroundColor: colors.background,
-    borderRadius: 6,
+    backgroundColor: colors.noriMute,
+    borderRadius: radii.sm,
     overflow: 'hidden',
   },
   barFill: {
     width: '100%',
-    borderRadius: 6,
+    borderRadius: radii.sm,
     minHeight: 4,
   },
   barLabel: {
+    fontFamily: fonts.bodyMedium,
     fontSize: 9,
+    lineHeight: 12,
     color: colors.textSecondary,
     marginTop: 4,
     textAlign: 'center',
   },
   targetLine: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.textSecondary,
     marginTop: spacing.sm,
     textAlign: 'center',

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Image, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import type { User } from '@supabase/supabase-js';
-import { colors } from '../../constants/theme';
+import { colors, fonts } from '../../constants/theme';
 import { getUserAvatarUrl, getUserInitials } from '../../utils/authUser';
 
 interface UserAvatarProps {
@@ -39,16 +39,16 @@ export function UserAvatar({ user, size = 72, style }: UserAvatarProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.nori,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   image: {
-    backgroundColor: colors.chipBg,
+    backgroundColor: colors.noriMute,
   },
   initials: {
-    color: colors.surface,
-    fontWeight: '700',
+    color: colors.porcelain,
+    fontFamily: fonts.bodyBold,
   },
 });

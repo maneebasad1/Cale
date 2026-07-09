@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { CalorieBarChart } from './CalorieBarChart';
-import { colors, spacing } from '../../constants/theme';
+import { EmptyState } from '../EmptyState';
+import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import type { GoalType } from '../../types';
 import type { PeriodSummary } from '../../utils/calorieStats';
 import { formatShortDate } from '../../utils/date';
@@ -22,7 +23,22 @@ export function HistorySummaryPanel({
   const bestLabel =
     goalType === 'maintain' ? 'Closest to target' : 'Best day';
   const worstLabel =
-    goalType === 'maintain' ? 'Furthest from target' : 'Worst day';
+    goalType === 'maintain' ? 'Furthest from target' : 'Highest day';
+
+  const hasLoggedDays = summary.days.some(day => day.total > 0);
+
+  if (!hasLoggedDays) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.period}>{periodLabel}</Text>
+        <EmptyState
+          icon="calendar"
+          title="No meals logged yet"
+          message="Log a few days and your averages will show up here."
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -68,13 +84,16 @@ export function HistorySummaryPanel({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: radii.lg - 2,
     padding: spacing.md,
     marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   period: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.title,
+    fontSize: 20,
+    lineHeight: 26,
     color: colors.text,
     marginBottom: spacing.md,
   },
@@ -85,25 +104,25 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     backgroundColor: colors.background,
-    borderRadius: 10,
+    borderRadius: radii.md,
     padding: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
   statLabel: {
-    fontSize: 11,
+    ...typography.overline,
     color: colors.textSecondary,
-    fontWeight: '600',
-    textTransform: 'uppercase',
     marginBottom: spacing.xs,
   },
   statValue: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontFamily: fonts.displayBold,
+    fontSize: 20,
+    lineHeight: 26,
     color: colors.text,
   },
   statUnit: {
-    fontSize: 11,
+    ...typography.caption,
+    fontFamily: fonts.body,
     color: colors.textSecondary,
     marginTop: 2,
   },

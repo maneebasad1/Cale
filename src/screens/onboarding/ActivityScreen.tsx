@@ -66,7 +66,7 @@ export function ActivityScreen({ route, navigation }: Props) {
               description={level.description}
               selected={activityLevel === level.value}
               onPress={() => setActivityLevel(level.value)}
-              icon="fitness"
+              icon="fitness-outline"
             />
           ))}
         </View>

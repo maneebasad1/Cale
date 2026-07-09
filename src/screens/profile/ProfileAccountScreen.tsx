@@ -8,9 +8,10 @@ import {
   View,
 } from 'react-native';
 import { Button } from '../../components/Button';
+import { Icon } from '../../components/Icon';
 import { UserAvatar } from '../../components/profile/UserAvatar';
 import { Screen } from '../../components/Screen';
-import { colors, spacing } from '../../constants/theme';
+import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { deleteAccount } from '../../services/accountService';
 import { getUserDisplayName } from '../../utils/authUser';
@@ -74,16 +75,19 @@ export function ProfileAccountScreen() {
           title="Sign out"
           variant="secondary"
           onPress={() =>
-            Alert.alert('Sign out', 'Sign out of your Calo account?', [
+            Alert.alert('Sign out', 'Sign out of your CALE account?', [
               { text: 'Cancel', style: 'cancel' },
-              { text: 'Sign Out', style: 'destructive', onPress: signOut },
+              { text: 'Sign out', style: 'destructive', onPress: signOut },
             ])
           }
           style={styles.signOutBtn}
         />
 
         <View style={styles.dangerZone}>
-          <Text style={styles.dangerTitle}>Danger zone</Text>
+          <View style={styles.dangerHeader}>
+            <Icon name="alert-circle-outline" size={18} color={colors.chili} />
+            <Text style={styles.dangerTitle}>Danger zone</Text>
+          </View>
           <Text style={styles.dangerText}>
             Permanently delete your account and all associated data.
           </Text>
@@ -93,9 +97,12 @@ export function ProfileAccountScreen() {
             disabled={deleting}
             activeOpacity={0.8}>
             {deleting ? (
-              <ActivityIndicator color={colors.error} />
+              <ActivityIndicator color={colors.chili} />
             ) : (
-              <Text style={styles.deleteBtnText}>Delete my account</Text>
+              <View style={styles.deleteBtnContent}>
+                <Icon name="trash-outline" size={18} color={colors.chili} />
+                <Text style={styles.deleteBtnText}>Delete my account</Text>
+              </View>
             )}
           </TouchableOpacity>
         </View>
@@ -110,11 +117,11 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    backgroundColor: colors.porcelain,
+    borderRadius: radii.lg,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.line,
     marginBottom: spacing.lg,
     alignItems: 'center',
   },
@@ -122,19 +129,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.stone,
     marginBottom: spacing.xs,
   },
   displayName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
+    ...typography.heading,
+    color: colors.ink,
     marginBottom: spacing.xs,
   },
   email: {
-    fontSize: 15,
-    color: colors.textSecondary,
+    ...typography.body,
+    color: colors.stone,
   },
   signOutBtn: {
     marginBottom: spacing.xl,
@@ -143,37 +149,46 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     paddingTop: spacing.lg,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
   },
-  dangerTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.error,
+  dangerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     marginBottom: spacing.xs,
   },
+  dangerTitle: {
+    ...typography.label,
+    color: colors.chili,
+  },
   dangerText: {
-    fontSize: 14,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.stone,
     marginBottom: spacing.md,
-    lineHeight: 20,
   },
   deleteBtn: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderRadius: 12,
+    borderRadius: radii.md,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 52,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.error,
+    backgroundColor: colors.porcelain,
+    borderWidth: 1.5,
+    borderColor: colors.chili,
   },
   deleteBtnDisabled: {
     opacity: 0.5,
   },
+  deleteBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   deleteBtnText: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 16,
-    fontWeight: '600',
-    color: colors.error,
+    lineHeight: 22,
+    color: colors.chili,
   },
 });

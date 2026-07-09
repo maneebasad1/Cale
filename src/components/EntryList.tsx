@@ -6,8 +6,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Icon } from './Icon';
-import { colors, spacing } from '../constants/theme';
+import { EmptyState } from './EmptyState';
+import { Icon, MEAL_ICONS } from './Icon';
+import { colors, radii, spacing, typography } from '../constants/theme';
 import type { CalorieEntry } from '../types';
 import { MEAL_LABELS, MEAL_TYPES } from '../types';
 
@@ -31,9 +32,11 @@ export function EntryList({
 
   if (grouped.length === 0) {
     return (
-      <View style={styles.empty}>
-        <Text style={styles.emptyText}>No entries yet. Tap + to add one.</Text>
-      </View>
+      <EmptyState
+        icon="restaurant-outline"
+        title="Nothing logged yet"
+        message="Tap + to add your first entry."
+      />
     );
   }
 
@@ -41,7 +44,7 @@ export function EntryList({
     const label = entry.foodName
       ? `${entry.foodName} (${entry.calories} kcal)`
       : `${entry.calories} kcal`;
-    Alert.alert('Delete Entry', `Remove ${label}?`, [
+    Alert.alert('Delete entry', `Remove ${label}?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -55,7 +58,14 @@ export function EntryList({
     <View style={styles.container}>
       {grouped.map(({ mealType, items }) => (
         <View key={mealType} style={styles.group}>
-          <Text style={styles.groupTitle}>{MEAL_LABELS[mealType]}</Text>
+          <View style={styles.groupHeader}>
+            <Icon
+              name={MEAL_ICONS[mealType]}
+              size={16}
+              color={colors.primary}
+            />
+            <Text style={styles.groupTitle}>{MEAL_LABELS[mealType]}</Text>
+          </View>
           {items.map(entry => (
             <View key={entry.id} style={styles.row}>
               <View style={styles.rowMain}>
@@ -120,26 +130,20 @@ const styles = StyleSheet.create({
   container: {
     gap: spacing.md,
   },
-  empty: {
-    padding: spacing.lg,
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-  },
   group: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: radii.md,
     padding: spacing.md,
   },
-  groupTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
     marginBottom: spacing.sm,
+  },
+  groupTitle: {
+    ...typography.overline,
+    color: colors.textSecondary,
   },
   row: {
     flexDirection: 'row',
@@ -154,14 +158,13 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   foodName: {
-    fontSize: 15,
-    fontWeight: '500',
+    ...typography.bodyMedium,
     color: colors.text,
     marginBottom: 2,
   },
   calories: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...typography.label,
+    fontSize: 15,
     color: colors.text,
   },
   actions: {
@@ -176,13 +179,11 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
   editText: {
+    ...typography.label,
     color: colors.primary,
-    fontSize: 14,
-    fontWeight: '500',
   },
   deleteText: {
+    ...typography.label,
     color: colors.error,
-    fontSize: 14,
-    fontWeight: '500',
   },
 });

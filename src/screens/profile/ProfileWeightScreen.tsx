@@ -8,10 +8,11 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Button } from '../../components/Button';
+import { Icon } from '../../components/Icon';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { LabeledInput } from '../../components/LabeledInput';
 import { Screen } from '../../components/Screen';
-import { colors, spacing } from '../../constants/theme';
+import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import { getProfile, saveProfile } from '../../services/storage';
 import {
   addWeightEntry,
@@ -46,7 +47,7 @@ export function ProfileWeightScreen() {
   const handleLogWeight = async () => {
     const weightNum = parseFloat(newWeight);
     if (!weightNum) {
-      Alert.alert('Invalid input', 'Please enter a valid weight.');
+      Alert.alert('Check your weight', 'Enter a valid weight to log.');
       return;
     }
 
@@ -69,10 +70,10 @@ export function ProfileWeightScreen() {
   };
 
   const handleDelete = (entry: WeightEntry) => {
-    Alert.alert('Delete entry', `Remove weight from ${entry.date}?`, [
+    Alert.alert('Remove entry', `Remove weight from ${entry.date}?`, [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Delete',
+        text: 'Remove',
         style: 'destructive',
         onPress: () => deleteWeightEntry(entry.id).then(loadData),
       },
@@ -110,8 +111,11 @@ export function ProfileWeightScreen() {
                 <Text style={styles.weightValue}>
                   {displayWeight(entry.weightKg, weightUnit)}
                 </Text>
-                <TouchableOpacity onPress={() => handleDelete(entry)}>
-                  <Text style={styles.weightDelete}>Delete</Text>
+                <TouchableOpacity
+                  onPress={() => handleDelete(entry)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel="Remove entry">
+                  <Icon name="trash-outline" size={18} color={colors.chili} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -128,9 +132,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   sectionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
+    ...typography.label,
+    color: colors.ink,
     marginBottom: spacing.sm,
     marginTop: spacing.sm,
   },
@@ -138,15 +141,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   emptyText: {
-    fontSize: 14,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.stone,
   },
   weightList: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    backgroundColor: colors.porcelain,
+    borderRadius: radii.md,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.line,
   },
   weightRow: {
     flexDirection: 'row',
@@ -155,21 +158,18 @@ const styles = StyleSheet.create({
   },
   weightRowBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
   },
   weightDate: {
     flex: 1,
-    fontSize: 14,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.stone,
   },
   weightValue: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
+    lineHeight: 20,
+    color: colors.ink,
     marginRight: spacing.md,
-  },
-  weightDelete: {
-    fontSize: 13,
-    color: colors.error,
   },
 });

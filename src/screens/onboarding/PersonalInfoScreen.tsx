@@ -7,7 +7,7 @@ import { FormSection } from '../../components/onboarding/FormSection';
 import { OnboardingFooter } from '../../components/onboarding/OnboardingFooter';
 import { OnboardingHeader } from '../../components/onboarding/OnboardingHeader';
 import { Screen } from '../../components/Screen';
-import { colors, spacing } from '../../constants/theme';
+import { colors, radii, spacing, typography } from '../../constants/theme';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import type { Gender } from '../../types';
 
@@ -53,7 +53,7 @@ export function PersonalInfoScreen({ route, navigation }: Props) {
         <OnboardingHeader
           step={2}
           title="A bit about you"
-          subtitle="Age and gender help us calculate your baseline metabolism."
+          subtitle="Age and gender help us estimate your baseline metabolism."
         />
 
         <FormSection title="Age">
@@ -105,23 +105,23 @@ const styles = StyleSheet.create({
   genderBtn: {
     flex: 1,
     paddingVertical: spacing.md,
-    borderRadius: 10,
-    borderWidth: 1,
+    borderRadius: radii.sm + 2,
+    borderWidth: 1.5,
     borderColor: colors.border,
     backgroundColor: colors.background,
     alignItems: 'center',
   },
   genderSelected: {
     borderColor: colors.primary,
-    backgroundColor: colors.chipBg,
+    backgroundColor: colors.noriMute,
   },
   genderText: {
-    fontSize: 16,
-    fontWeight: '500',
+    ...typography.bodyMedium,
     color: colors.textSecondary,
   },
   genderTextSelected: {
+    ...typography.label,
+    fontSize: 16,
     color: colors.primary,
-    fontWeight: '600',
   },
 });

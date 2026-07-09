@@ -4,10 +4,9 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
   ViewStyle,
 } from 'react-native';
-import { colors, spacing } from '../constants/theme';
+import { colors, radii, spacing, typography } from '../constants/theme';
 
 interface ButtonProps {
   title: string;
@@ -38,7 +37,9 @@ export function Button({
       ]}
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.8}>
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: disabled || loading }}>
       {loading ? (
         <ActivityIndicator color={isPrimary ? colors.surface : colors.primary} />
       ) : (
@@ -58,7 +59,7 @@ const styles = StyleSheet.create({
   button: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderRadius: 12,
+    borderRadius: radii.md,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 52,
@@ -68,15 +69,15 @@ const styles = StyleSheet.create({
   },
   secondary: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.primary,
   },
   disabled: {
     opacity: 0.5,
   },
   text: {
+    ...typography.label,
     fontSize: 16,
-    fontWeight: '600',
   },
   primaryText: {
     color: colors.surface,

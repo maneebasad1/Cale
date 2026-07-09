@@ -1,6 +1,6 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, spacing } from '../constants/theme';
+import { colors, fonts, radii, spacing, typography } from '../constants/theme';
 import type { FoodItem } from '../types/food';
 
 interface FrequentFoodsRowProps {
@@ -54,11 +54,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   title: {
-    fontSize: 12,
-    fontWeight: '600',
+    ...typography.overline,
     color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
     marginBottom: spacing.xs,
   },
   row: {
@@ -68,7 +65,7 @@ const styles = StyleSheet.create({
   chip: {
     maxWidth: 140,
     backgroundColor: colors.background,
-    borderRadius: 10,
+    borderRadius: radii.sm + 2,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.sm,
@@ -76,11 +73,10 @@ const styles = StyleSheet.create({
   },
   chipSelected: {
     borderColor: colors.primary,
-    backgroundColor: colors.chipBg,
+    backgroundColor: colors.noriMute,
   },
   chipName: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text,
     marginBottom: 2,
   },
@@ -88,7 +84,8 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
   },
   chipCal: {
-    fontSize: 12,
+    ...typography.caption,
+    fontFamily: fonts.body,
     color: colors.textSecondary,
   },
   chipCalSelected: {

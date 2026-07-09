@@ -5,7 +5,7 @@ import { Button } from '../../components/Button';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { LabeledInput } from '../../components/LabeledInput';
 import { Screen } from '../../components/Screen';
-import { colors, spacing } from '../../constants/theme';
+import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import { getProfile, saveProfile } from '../../services/storage';
 import type { GoalType, UserProfile } from '../../types';
 import { GOAL_OPTIONS } from '../../types';
@@ -56,17 +56,17 @@ export function ProfileGoalsScreen() {
           : lbToKg(goalWeightNum);
 
     if (goalType !== 'maintain' && !goalWeightNum) {
-      Alert.alert('Invalid input', 'Please enter a valid goal weight.');
+      Alert.alert('Check your goal', 'Enter a valid goal weight.');
       return;
     }
 
     if (goalType === 'lose' && goalWeightKg >= profile.weightKg) {
-      Alert.alert('Invalid goal', 'Goal weight must be less than current weight.');
+      Alert.alert('Check your goal', 'Goal weight must be less than your current weight.');
       return;
     }
 
     if (goalType === 'gain' && goalWeightKg <= profile.weightKg) {
-      Alert.alert('Invalid goal', 'Goal weight must be more than current weight.');
+      Alert.alert('Check your goal', 'Goal weight must be more than your current weight.');
       return;
     }
 
@@ -92,7 +92,7 @@ export function ProfileGoalsScreen() {
     return (
       <Screen edges={[]}>
         <View style={styles.loading}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>Loading…</Text>
         </View>
       </Screen>
     );
@@ -143,7 +143,7 @@ export function ProfileGoalsScreen() {
         )}
 
         <Button
-          title="Save goals"
+          title="Save changes"
           onPress={handleSave}
           loading={saving}
           style={styles.saveBtn}
@@ -164,34 +164,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    color: colors.textSecondary,
+    ...typography.body,
+    color: colors.stone,
   },
   summaryCard: {
-    backgroundColor: colors.chipBg,
-    borderRadius: 12,
+    backgroundColor: colors.noriMute,
+    borderRadius: radii.lg,
     padding: spacing.md,
     marginBottom: spacing.lg,
     alignItems: 'center',
   },
   summaryLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.stone,
     marginBottom: spacing.xs,
   },
   summaryValue: {
+    fontFamily: fonts.displayBold,
     fontSize: 24,
-    fontWeight: '700',
-    color: colors.primary,
+    lineHeight: 30,
+    color: colors.nori,
   },
   summarySub: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.stone,
     marginTop: spacing.xs,
   },
   sectionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
+    ...typography.label,
+    color: colors.ink,
     marginBottom: spacing.sm,
   },
   optionList: {
@@ -200,23 +201,22 @@ const styles = StyleSheet.create({
   },
   option: {
     padding: spacing.md,
-    borderRadius: 10,
-    backgroundColor: colors.surface,
+    borderRadius: radii.sm + 2,
+    backgroundColor: colors.porcelain,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.line,
   },
   optionSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.chipBg,
+    borderColor: colors.nori,
+    backgroundColor: colors.noriMute,
   },
   optionText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: colors.text,
+    ...typography.bodyMedium,
+    color: colors.ink,
   },
   optionTextSelected: {
-    color: colors.primary,
-    fontWeight: '600',
+    color: colors.nori,
+    fontFamily: fonts.bodySemiBold,
   },
   saveBtn: {
     marginTop: spacing.md,

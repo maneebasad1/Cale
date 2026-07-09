@@ -11,11 +11,12 @@ import {
 } from 'react-native';
 import { AddCustomFoodForm } from './AddCustomFoodForm';
 import { FrequentFoodsRow } from './FrequentFoodsRow';
+import { Icon } from './Icon';
 import { getFrequentFoods } from '../services/frequentFoods';
 import { searchFoods } from '../services/foodService';
 import type { FoodItem } from '../types/food';
 import { FOOD_REGION_LABELS } from '../types/food';
-import { colors, spacing } from '../constants/theme';
+import { colors, fonts, radii, spacing, typography } from '../constants/theme';
 
 interface FoodSearchListProps {
   selectedId?: string | null;
@@ -66,6 +67,22 @@ export function FoodSearchList({
     return `${region} · ${item.servingLabel}${source}`;
   };
 
+  const emptyMessage = query.trim()
+    ? 'Nothing matched. Try another name, or add your own food.'
+    : 'Search the catalog, or add a food you cook often.';
+
+  const emptyTitle = query.trim() ? 'No matches' : 'Find a food';
+
+  const renderEmpty = () => (
+    <View style={styles.empty}>
+      <View style={styles.emptyIcon}>
+        <Icon name="search-outline" size={22} color={colors.primary} />
+      </View>
+      <Text style={styles.emptyTitle}>{emptyTitle}</Text>
+      <Text style={styles.emptyMessage}>{emptyMessage}</Text>
+    </View>
+  );
+
   const renderItem = (item: FoodItem) => {
     const selected = selectedId === item.id;
     return (
@@ -78,9 +95,7 @@ export function FoodSearchList({
           <Text style={[styles.name, selected && styles.nameSelected]}>
             {item.name}
           </Text>
-          <Text style={styles.meta}>
-            {getMetaLabel(item)}
-          </Text>
+          <Text style={styles.meta}>{getMetaLabel(item)}</Text>
         </View>
         <Text style={[styles.calories, selected && styles.caloriesSelected]}>
           {item.calories}
@@ -134,11 +149,7 @@ export function FoodSearchList({
           nestedScrollEnabled
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator>
-          {results.length === 0 ? (
-            <Text style={styles.empty}>No foods found. Try another search.</Text>
-          ) : (
-            results.map(renderItem)
-          )}
+          {results.length === 0 ? renderEmpty() : results.map(renderItem)}
         </ScrollView>
       ) : (
         <FlatList
@@ -147,9 +158,7 @@ export function FoodSearchList({
           style={styles.listCompact}
           keyboardShouldPersistTaps="handled"
           nestedScrollEnabled
-          ListEmptyComponent={
-            <Text style={styles.empty}>No foods found. Try another search.</Text>
-          }
+          ListEmptyComponent={renderEmpty()}
           renderItem={({ item }) => renderItem(item)}
         />
       )}
@@ -163,12 +172,12 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     backgroundColor: colors.background,
-    borderRadius: 10,
+    borderRadius: radii.sm + 2,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    fontSize: 16,
+    ...typography.body,
     color: colors.text,
     marginBottom: spacing.sm,
   },
@@ -178,8 +187,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   addOwnText: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.primary,
   },
   loader: {
@@ -189,20 +197,39 @@ const styles = StyleSheet.create({
     maxHeight: 160,
   },
   listFull: {
-    maxHeight: 160,
+    maxHeight: 200,
   },
   empty: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  emptyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.full,
+    backgroundColor: colors.noriMute,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  emptyTitle: {
+    ...typography.label,
+    color: colors.text,
     textAlign: 'center',
+    marginBottom: 2,
+  },
+  emptyMessage: {
+    ...typography.caption,
     color: colors.textSecondary,
-    padding: spacing.md,
-    fontSize: 14,
+    textAlign: 'center',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
-    borderRadius: 10,
+    borderRadius: radii.sm + 2,
     marginBottom: spacing.xs,
     backgroundColor: colors.background,
     borderWidth: 1,
@@ -210,28 +237,29 @@ const styles = StyleSheet.create({
   },
   rowSelected: {
     borderColor: colors.primary,
-    backgroundColor: colors.chipBg,
+    backgroundColor: colors.noriMute,
   },
   rowText: {
     flex: 1,
     marginRight: spacing.sm,
   },
   name: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text,
   },
   nameSelected: {
     color: colors.primaryDark,
   },
   meta: {
-    fontSize: 12,
+    ...typography.caption,
+    fontFamily: fonts.body,
     color: colors.textSecondary,
     marginTop: 2,
   },
   calories: {
+    ...typography.heading,
     fontSize: 16,
-    fontWeight: '700',
+    lineHeight: 20,
     color: colors.text,
   },
   caloriesSelected: {

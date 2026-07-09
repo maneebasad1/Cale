@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '../constants/theme';
+import { Icon } from './Icon';
+import { colors, radii, spacing, typography } from '../constants/theme';
 
 interface StreakBadgeProps {
   streak: number;
@@ -10,16 +11,17 @@ export function StreakBadge({ streak }: StreakBadgeProps) {
   if (streak <= 0) {
     return (
       <View style={styles.neutral}>
+        <Icon name="flame-outline" size={16} color={colors.textSecondary} />
         <Text style={styles.neutralText}>Log today to start a streak</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.badge}>
-      <Text style={styles.emoji}>🔥</Text>
+    <View style={styles.badge} accessibilityLabel={`${streak} day streak`}>
+      <Icon name="flame" size={16} color={colors.saffron} />
       <Text style={styles.text}>
-        {streak} day{streak === 1 ? '' : 's'} streak
+        {streak}-day streak
       </Text>
     </View>
   );
@@ -30,26 +32,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: colors.chipBg,
-    borderRadius: 20,
+    backgroundColor: colors.saffronMute,
+    borderRadius: radii.pill,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    marginBottom: spacing.sm,
+    paddingVertical: spacing.xs + 2,
+    marginBottom: spacing.md,
     gap: spacing.xs,
   },
-  emoji: {
-    fontSize: 16,
-  },
   text: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primaryDark,
+    ...typography.label,
+    color: colors.text,
   },
   neutral: {
-    marginBottom: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
   },
   neutralText: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.textSecondary,
   },
 });

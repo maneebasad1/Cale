@@ -12,7 +12,16 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HistorySummaryPanel } from '../../components/history/HistorySummaryPanel';
 import { Screen } from '../../components/Screen';
-import { colors, spacing } from '../../constants/theme';
+import {
+  colors,
+  fonts,
+  getProgressTone,
+  progressColor,
+  progressMute,
+  radii,
+  spacing,
+  typography,
+} from '../../constants/theme';
 import type { HistoryStackParamList } from '../../navigation/types';
 import {
   copyDayEntries,
@@ -72,18 +81,18 @@ export function HistoryScreen() {
     Object.values(allLogs).forEach(log => {
       const total = getTotalCalories(log);
       totals[log.date] = total;
-      const isOver = total > target;
+      const tone = getProgressTone(total, target);
       marks[log.date] = {
         marked: true,
-        dotColor: isOver ? colors.overMaintenance : colors.underMaintenance,
+        dotColor: progressColor(tone),
         customStyles: {
           container: {
-            backgroundColor: isOver ? '#FFEBEE' : '#E8F5E9',
-            borderRadius: 8,
+            backgroundColor: progressMute(tone),
+            borderRadius: radii.sm,
           },
           text: {
             color: colors.text,
-            fontWeight: '600',
+            fontFamily: fonts.bodySemiBold,
           },
         },
       };
@@ -96,11 +105,11 @@ export function HistoryScreen() {
           ...(marks[today]?.customStyles?.container ?? {}),
           borderWidth: 2,
           borderColor: colors.primary,
-          borderRadius: 8,
+          borderRadius: radii.sm,
         },
         text: {
           color: colors.primary,
-          fontWeight: '700',
+          fontFamily: fonts.bodyBold,
         },
       },
     };
@@ -208,8 +217,8 @@ export function HistoryScreen() {
               goalType={goalType}
               periodLabel={
                 summaryPeriod === 'week'
-                  ? 'Weekly summary'
-                  : 'Monthly summary'
+                  ? 'This week'
+                  : 'This month'
               }
             />
           </>
@@ -296,38 +305,68 @@ export function HistoryScreen() {
                 dotColor: colors.primary,
                 arrowColor: colors.primary,
                 monthTextColor: colors.text,
+                textDayFontFamily: fonts.bodyMedium,
+                textMonthFontFamily: fonts.displayMedium,
+                textDayHeaderFontFamily: fonts.bodySemiBold,
                 textDayFontWeight: '500',
-                textMonthFontWeight: '700',
+                textMonthFontWeight: '600',
                 textDayHeaderFontWeight: '600',
               }}
               style={styles.calendar}
             />
 
             <View style={styles.legend}>
-              <Text style={styles.legendTitle}>Color coding</Text>
+              <Text style={styles.legendTitle}>Day colors</Text>
               <View style={styles.legendRow}>
                 <View
                   style={[
-                    styles.legendDot,
-                    { backgroundColor: colors.underMaintenance },
-                  ]}
-                />
+                    styles.legendSwatch,
+                    { backgroundColor: colors.noriMute },
+                  ]}>
+                  <View
+                    style={[
+                      styles.legendDot,
+                      { backgroundColor: colors.nori },
+                    ]}
+                  />
+                </View>
                 <Text style={styles.legendText}>
-                  At or under target ({target || '—'} kcal)
+                  On track ({target || '—'} kcal)
                 </Text>
               </View>
               <View style={styles.legendRow}>
                 <View
                   style={[
-                    styles.legendDot,
-                    { backgroundColor: colors.overMaintenance },
-                  ]}
-                />
+                    styles.legendSwatch,
+                    { backgroundColor: colors.saffronMute },
+                  ]}>
+                  <View
+                    style={[
+                      styles.legendDot,
+                      { backgroundColor: colors.saffron },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.legendText}>Near target</Text>
+              </View>
+              <View style={styles.legendRow}>
+                <View
+                  style={[
+                    styles.legendSwatch,
+                    { backgroundColor: colors.chiliMute },
+                  ]}>
+                  <View
+                    style={[
+                      styles.legendDot,
+                      { backgroundColor: colors.chili },
+                    ]}
+                  />
+                </View>
                 <Text style={styles.legendText}>Over daily target</Text>
               </View>
               <Text style={styles.hint}>
-                Tap a day to view entries. Long-press a day with meals to copy
-                them to today.
+                Tap a day for details. Long-press a logged day to copy meals to
+                today.
               </Text>
             </View>
           </>
@@ -344,29 +383,26 @@ const styles = StyleSheet.create({
   },
   toggleRow: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: 10,
+    backgroundColor: colors.noriMute,
+    borderRadius: radii.md,
     padding: spacing.xs,
     marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   toggleBtn: {
     flex: 1,
     paddingVertical: spacing.sm,
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: radii.sm,
   },
   toggleBtnActive: {
-    backgroundColor: colors.chipBg,
+    backgroundColor: colors.primary,
   },
   toggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
+    ...typography.label,
+    color: colors.primary,
   },
   toggleTextActive: {
-    color: colors.primary,
+    color: colors.surface,
   },
   periodRow: {
     flexDirection: 'row',
@@ -376,7 +412,7 @@ const styles = StyleSheet.create({
   periodBtn: {
     flex: 1,
     paddingVertical: spacing.sm,
-    borderRadius: 10,
+    borderRadius: radii.pill,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
@@ -384,30 +420,32 @@ const styles = StyleSheet.create({
   },
   periodBtnActive: {
     borderColor: colors.primary,
-    backgroundColor: colors.chipBg,
+    backgroundColor: colors.noriMute,
   },
   periodText: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.textSecondary,
   },
   periodTextActive: {
     color: colors.primary,
   },
   calendar: {
-    borderRadius: 12,
+    borderRadius: radii.lg - 2,
     overflow: 'hidden',
     marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   legend: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: radii.lg - 2,
     padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   legendTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
+    ...typography.overline,
+    color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
   legendRow: {
@@ -415,37 +453,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xs,
   },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  legendSwatch: {
+    width: 28,
+    height: 20,
+    borderRadius: radii.sm - 2,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: spacing.sm,
   },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
   legendText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.textSecondary,
     flex: 1,
   },
   hint: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.textSecondary,
     marginTop: spacing.sm,
-    fontStyle: 'italic',
   },
   dayCell: {
     alignItems: 'center',
     justifyContent: 'center',
     width: 36,
     height: 44,
-    borderRadius: 8,
+    borderRadius: radii.sm,
   },
   todayCell: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.primary,
   },
   dayNumber: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.label,
     color: colors.text,
   },
   dayDisabled: {
@@ -453,14 +496,16 @@ const styles = StyleSheet.create({
   },
   daySelected: {
     color: colors.surface,
-    fontWeight: '700',
+    fontFamily: fonts.bodyBold,
   },
   dayToday: {
     color: colors.primary,
-    fontWeight: '700',
+    fontFamily: fonts.bodyBold,
   },
   dayTotal: {
+    fontFamily: fonts.bodyMedium,
     fontSize: 9,
+    lineHeight: 12,
     color: colors.textSecondary,
     marginTop: 1,
   },

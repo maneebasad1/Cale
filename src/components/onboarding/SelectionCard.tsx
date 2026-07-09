@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Icon, IconName } from '../Icon';
-import { colors, spacing } from '../../constants/theme';
+import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 
 interface SelectionCardProps {
   label: string;
@@ -22,7 +22,9 @@ export function SelectionCard({
     <TouchableOpacity
       style={[styles.card, selected && styles.cardSelected]}
       onPress={onPress}
-      activeOpacity={0.7}>
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}>
       {icon && (
         <View style={[styles.iconWrap, selected && styles.iconWrapSelected]}>
           <Icon
@@ -55,7 +57,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
-    borderRadius: 14,
+    borderRadius: radii.lg - 2,
     backgroundColor: colors.surface,
     borderWidth: 2,
     borderColor: colors.border,
@@ -63,13 +65,13 @@ const styles = StyleSheet.create({
   },
   cardSelected: {
     borderColor: colors.primary,
-    backgroundColor: colors.chipBg,
+    backgroundColor: colors.noriMute,
   },
   iconWrap: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.chipBg,
+    backgroundColor: colors.noriMute,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -80,8 +82,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.bodyMedium,
+    fontFamily: fonts.bodySemiBold,
     color: colors.text,
     marginBottom: 2,
   },
@@ -89,9 +91,8 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
   },
   description: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.textSecondary,
-    lineHeight: 18,
   },
   descriptionSelected: {
     color: colors.primary,

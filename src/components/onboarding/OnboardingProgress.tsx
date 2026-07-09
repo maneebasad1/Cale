@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '../../constants/theme';
+import { colors, radii, spacing, typography } from '../../constants/theme';
 
 interface OnboardingProgressProps {
   currentStep: number;
@@ -42,8 +42,8 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    height: 4,
-    borderRadius: 2,
+    height: 5,
+    borderRadius: radii.pill,
   },
   segmentActive: {
     backgroundColor: colors.primary,
@@ -52,10 +52,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
   stepLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.overline,
     color: colors.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
 });

@@ -12,11 +12,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandLogo } from '../../components/BrandLogo';
 import { EntryList } from '../../components/EntryList';
 import { FabButton } from '../../components/FabButton';
-import { ProgressBar } from '../../components/ProgressBar';
+import { Icon } from '../../components/Icon';
+import { ProgressRing } from '../../components/ProgressRing';
 import { Screen } from '../../components/Screen';
 import { StreakBadge } from '../../components/StreakBadge';
 import { WeightCheckInBanner } from '../../components/WeightCheckInBanner';
-import { colors, spacing } from '../../constants/theme';
+import { colors, radii, spacing, typography } from '../../constants/theme';
 import { useAddEntryNavigation } from '../../hooks/useAddEntryNavigation';
 import { useMyFoodsNavigation } from '../../hooks/useMyFoodsNavigation';
 import {
@@ -115,14 +116,21 @@ export function HomeScreen() {
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: fabOffset }]}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
         }>
         <View style={styles.headerWrap}>
           <BrandLogo size="sm" layout="row" style={styles.brand} />
           <TouchableOpacity
             onPress={openMyFoods}
             style={styles.myFoodsBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="My Foods"
+            accessibilityRole="button">
+            <Icon name="nutrition-outline" size={18} color={colors.primary} />
             <Text style={styles.myFoodsBtnText}>My Foods</Text>
           </TouchableOpacity>
         </View>
@@ -140,13 +148,16 @@ export function HomeScreen() {
           />
         )}
 
-        <ProgressBar consumed={total} target={target} />
+        <ProgressRing consumed={total} target={target} />
 
-        <Text style={styles.weeklyAvg}>
-          7-day avg: {weeklyAvg.toLocaleString()} kcal
-        </Text>
+        <View style={styles.avgRow}>
+          <Icon name="time-outline" size={16} color={colors.textSecondary} />
+          <Text style={styles.weeklyAvg}>
+            7-day avg {weeklyAvg.toLocaleString()} kcal
+          </Text>
+        </View>
 
-        <Text style={styles.sectionTitle}>Today's Log</Text>
+        <Text style={styles.sectionTitle}>Today's log</Text>
         <EntryList
           entries={entries}
           onEdit={handleEdit}
@@ -167,41 +178,47 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   headerWrap: {
-    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: spacing.md,
   },
   brand: {
     alignSelf: 'flex-start',
-    marginBottom: spacing.sm,
+    width: undefined,
+    flex: 0,
   },
   myFoodsBtn: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.chipBg,
-    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.sm + 2,
+    backgroundColor: colors.noriMute,
+    borderRadius: radii.pill,
   },
   myFoodsBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.primary,
   },
   date: {
-    fontSize: 15,
+    ...typography.caption,
     color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
-  weeklyAvg: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
+  avgRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.md,
     marginBottom: spacing.xs,
   },
+  weeklyAvg: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...typography.heading,
     color: colors.text,
     marginTop: spacing.lg,
     marginBottom: spacing.md,

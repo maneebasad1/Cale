@@ -12,7 +12,7 @@ import { MealChipSelector } from '../../components/MealChipSelector';
 import { QuickCalorieChips } from '../../components/QuickCalorieChips';
 import { Screen } from '../../components/Screen';
 import { UnitToggle } from '../../components/UnitToggle';
-import { colors, spacing } from '../../constants/theme';
+import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import type { MainStackParamList } from '../../navigation/types';
 import { resolveFoodById } from '../../services/foodService';
 import { onMealsLogged } from '../../services/notificationService';
@@ -47,7 +47,7 @@ export function AddEntryScreen() {
 
   useEffect(() => {
     navigation.setOptions({
-      title: isEditing ? 'Edit Entry' : 'Add Entry',
+      title: isEditing ? 'Edit entry' : 'Add entry',
     });
   }, [navigation, isEditing]);
 
@@ -172,7 +172,7 @@ export function AddEntryScreen() {
   const handleQuickRepeatSave = () => {
     Alert.alert(
       'Repeat last entry?',
-      `Save the same ${MEAL_LABELS[mealType].toLowerCase()} as your last logged one?`,
+      `Save the same ${MEAL_LABELS[mealType].toLowerCase()} as last time?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -281,7 +281,7 @@ export function AddEntryScreen() {
         contentContainerStyle={styles.content}
         footer={
           <OnboardingFooter
-            title={isEditing ? 'Update Entry' : 'Save Entry'}
+            title={isEditing ? 'Save changes' : 'Save entry'}
             onPress={handleSave}
             disabled={!isValid}
             loading={saving}
@@ -345,7 +345,7 @@ export function AddEntryScreen() {
         <FormSection
           title={
             entryMode === 'food'
-              ? 'Calories (adjust portion if needed)'
+              ? 'Calories (adjust if needed)'
               : 'Calories'
           }>
           {entryMode === 'custom' && (
@@ -365,7 +365,7 @@ export function AddEntryScreen() {
           </View>
           {entryMode === 'custom' && (
             <Text style={styles.hint}>
-              Enter the total calories for this meal or snack.
+              Total calories for this meal or snack.
             </Text>
           )}
         </FormSection>
@@ -392,10 +392,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
+    ...typography.body,
     color: colors.textSecondary,
   },
   dateLabel: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.textSecondary,
     marginBottom: spacing.lg,
   },
@@ -403,15 +404,15 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.chipBg,
-    borderRadius: 10,
+    backgroundColor: colors.noriMute,
+    borderRadius: radii.sm + 2,
     borderWidth: 1,
     borderColor: colors.primary,
   },
   repeatBtnSecondary: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: 10,
+    borderRadius: radii.sm + 2,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
@@ -422,39 +423,36 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   repeatText: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.caption,
+    fontFamily: fonts.bodySemiBold,
     color: colors.primary,
   },
   repeatTextSecondary: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.caption,
+    fontFamily: fonts.bodySemiBold,
     color: colors.textSecondary,
   },
   selectedFood: {
     marginTop: spacing.sm,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.chipBg,
-    borderRadius: 10,
+    backgroundColor: colors.noriMute,
+    borderRadius: radii.sm + 2,
     borderWidth: 1,
     borderColor: colors.primary,
   },
   selectedLabel: {
-    fontSize: 10,
-    fontWeight: '600',
+    ...typography.overline,
     color: colors.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
     marginBottom: 2,
   },
   selectedName: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.bodyMedium,
+    fontFamily: fonts.bodySemiBold,
     color: colors.text,
   },
   selectedMeta: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.textSecondary,
     marginTop: 2,
   },
@@ -462,7 +460,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.background,
-    borderRadius: 10,
+    borderRadius: radii.sm + 2,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderWidth: 1,
@@ -470,21 +468,20 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    fontFamily: fonts.displayBold,
     fontSize: 28,
-    fontWeight: '700',
+    lineHeight: 34,
     color: colors.text,
     paddingVertical: spacing.sm,
   },
   suffix: {
-    fontSize: 16,
-    fontWeight: '500',
+    ...typography.bodyMedium,
     color: colors.textSecondary,
   },
   hint: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.textSecondary,
     marginTop: spacing.sm,
-    lineHeight: 18,
   },
   cancelBtn: {
     marginTop: spacing.sm,

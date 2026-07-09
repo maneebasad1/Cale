@@ -1,5 +1,5 @@
 /**
- * Calo — Offline Calorie Tracker
+ * CALE — Calorie Tracker
  *
  * @format
  */

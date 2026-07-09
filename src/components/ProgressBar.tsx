@@ -1,24 +1,34 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '../constants/theme';
+import {
+  colors,
+  fonts,
+  getProgressTone,
+  progressColor,
+  radii,
+  spacing,
+  typography,
+} from '../constants/theme';
 
 interface ProgressBarProps {
   consumed: number;
   target: number;
 }
 
+/** Compact linear progress — used on Day Detail / denser layouts. */
 export function ProgressBar({ consumed, target }: ProgressBarProps) {
   const progress = target > 0 ? Math.min(consumed / target, 1) : 0;
-  const isOver = consumed > target;
-  const barColor = isOver ? colors.overMaintenance : colors.primary;
+  const tone = getProgressTone(consumed, target);
+  const barColor = progressColor(tone);
   const remaining = target - consumed;
+  const isOver = consumed > target;
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.remainingHero, isOver && styles.over]}>
+      <Text style={[styles.remainingHero, { color: barColor }]}>
         {isOver
           ? `${Math.abs(remaining).toLocaleString()} kcal over`
-          : `${remaining.toLocaleString()} kcal left today`}
+          : `${remaining.toLocaleString()} kcal left`}
       </Text>
       <View style={styles.track}>
         <View
@@ -29,7 +39,7 @@ export function ProgressBar({ consumed, target }: ProgressBarProps) {
         />
       </View>
       <View style={styles.footer}>
-        <Text style={styles.consumed}>{consumed.toLocaleString()} kcal eaten</Text>
+        <Text style={styles.consumed}>{consumed.toLocaleString()} eaten</Text>
         <Text style={styles.target}>Target {target.toLocaleString()}</Text>
       </View>
     </View>
@@ -40,26 +50,23 @@ const styles = StyleSheet.create({
   container: {
     padding: spacing.md,
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: radii.md,
   },
   remainingHero: {
+    fontFamily: fonts.displayBold,
     fontSize: 24,
-    fontWeight: '700',
-    color: colors.primary,
+    lineHeight: 30,
     marginBottom: spacing.sm,
   },
-  over: {
-    color: colors.overMaintenance,
-  },
   track: {
-    height: 12,
+    height: 10,
     backgroundColor: colors.border,
-    borderRadius: 6,
+    borderRadius: 5,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
-    borderRadius: 6,
+    borderRadius: 5,
   },
   footer: {
     flexDirection: 'row',
@@ -67,11 +74,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   consumed: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.textSecondary,
   },
   target: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.textSecondary,
   },
 });

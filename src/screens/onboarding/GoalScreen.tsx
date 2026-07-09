@@ -9,7 +9,7 @@ import { OnboardingFooter } from '../../components/onboarding/OnboardingFooter';
 import { OnboardingHeader } from '../../components/onboarding/OnboardingHeader';
 import { SelectionCard } from '../../components/onboarding/SelectionCard';
 import { Screen } from '../../components/Screen';
-import { colors, spacing } from '../../constants/theme';
+import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import type { GoalType } from '../../types';
 import { GOAL_OPTIONS } from '../../types';
@@ -124,7 +124,7 @@ export function GoalScreen({ route, navigation }: Props) {
         contentContainerStyle={styles.scrollContent}
         footer={
           <OnboardingFooter
-            title="See My Plan"
+            title="See my plan"
             onPress={handleContinue}
             disabled={!isValid()}
           />
@@ -132,7 +132,7 @@ export function GoalScreen({ route, navigation }: Props) {
         <OnboardingHeader
           step={4}
           title="What's your goal?"
-          subtitle="Choose whether you want to lose or gain weight, then set a target."
+          subtitle="Choose lose or gain, then set a target weight."
         />
 
         <View style={styles.goalOptions}>
@@ -223,20 +223,20 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   currentWeight: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
   error: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.error,
     marginTop: spacing.xs,
   },
   previewCard: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: radii.lg,
     padding: spacing.lg,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.primary,
     marginTop: spacing.sm,
   },
@@ -247,15 +247,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   previewLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.overline,
     color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   previewAdjustment: {
+    fontFamily: fonts.displayBold,
     fontSize: 28,
-    fontWeight: '700',
     color: colors.text,
     marginBottom: spacing.md,
   },
@@ -265,24 +262,23 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   previewTargetLabel: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
   previewTarget: {
+    fontFamily: fonts.displayBold,
     fontSize: 36,
-    fontWeight: '700',
     color: colors.primary,
     marginBottom: spacing.xs,
   },
   previewMaintenance: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.textSecondary,
     marginBottom: spacing.md,
   },
   previewEstimate: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.primaryDark,
-    fontStyle: 'italic',
   },
 });

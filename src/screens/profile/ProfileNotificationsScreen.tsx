@@ -10,7 +10,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Button } from '../../components/Button';
 import { MealReminderCard } from '../../components/profile/MealReminderCard';
 import { Screen } from '../../components/Screen';
-import { colors, spacing } from '../../constants/theme';
+import { colors, spacing, typography } from '../../constants/theme';
 import {
   formatMealRemindersSummary,
   sendTestNotification,
@@ -115,7 +115,7 @@ export function ProfileNotificationsScreen() {
     return (
       <Screen edges={[]}>
         <View style={styles.loading}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>Loading…</Text>
         </View>
       </Screen>
     );
@@ -150,7 +150,7 @@ export function ProfileNotificationsScreen() {
         ))}
 
         <Button
-          title="Save notifications"
+          title="Save changes"
           onPress={handleSave}
           loading={saving}
           style={styles.saveBtn}
@@ -185,19 +185,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    color: colors.textSecondary,
+    ...typography.body,
+    color: colors.stone,
   },
   sectionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
+    ...typography.label,
+    color: colors.ink,
     marginBottom: spacing.sm,
   },
   hint: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.stone,
     marginBottom: spacing.md,
-    lineHeight: 18,
   },
   saveBtn: {
     marginTop: spacing.lg,
@@ -206,18 +205,16 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     paddingTop: spacing.lg,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
   },
   testTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
+    ...typography.label,
+    color: colors.ink,
     marginBottom: spacing.xs,
   },
   testHint: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.stone,
     marginBottom: spacing.md,
-    lineHeight: 18,
   },
 });

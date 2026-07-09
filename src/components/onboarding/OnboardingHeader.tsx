@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '../../constants/theme';
+import { colors, fonts, spacing, typography } from '../../constants/theme';
 import { OnboardingProgress } from './OnboardingProgress';
 
 interface OnboardingHeaderProps {
@@ -28,14 +28,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   title: {
-    fontSize: 26,
-    fontWeight: '700',
+    fontFamily: fonts.displayBold,
+    fontSize: 28,
+    lineHeight: 34,
     color: colors.text,
     marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.textSecondary,
-    lineHeight: 22,
   },
 });

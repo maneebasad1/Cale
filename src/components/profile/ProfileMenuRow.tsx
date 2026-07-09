@@ -1,10 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import { colors, spacing } from '../../constants/theme';
+import { Icon, type IconName } from '../Icon';
+import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 
 interface ProfileMenuRowProps {
-  icon: string;
+  icon: IconName;
   title: string;
   subtitle?: string;
   onPress: () => void;
@@ -18,7 +18,7 @@ export function ProfileMenuRow({
   onPress,
   destructive,
 }: ProfileMenuRowProps) {
-  const iconColor = destructive ? colors.error : colors.primary;
+  const iconColor = destructive ? colors.chili : colors.nori;
 
   return (
     <TouchableOpacity
@@ -30,7 +30,7 @@ export function ProfileMenuRow({
           styles.iconWrap,
           destructive && styles.iconWrapDestructive,
         ]}>
-        <Ionicons name={icon} size={20} color={iconColor} />
+        <Icon name={icon} size={20} color={iconColor} />
       </View>
       <View style={styles.textWrap}>
         <Text style={[styles.title, destructive && styles.destructive]}>
@@ -38,10 +38,10 @@ export function ProfileMenuRow({
         </Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
-      <Ionicons
+      <Icon
         name="chevron-forward"
         size={18}
-        color={destructive ? colors.error : colors.textSecondary}
+        color={destructive ? colors.chili : colors.stone}
       />
     </TouchableOpacity>
   );
@@ -54,35 +54,36 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.line,
   },
   iconWrap: {
     width: 36,
     height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.chipBg,
+    borderRadius: radii.sm + 2,
+    backgroundColor: colors.noriMute,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
   },
   iconWrapDestructive: {
-    backgroundColor: '#FFEBEE',
+    backgroundColor: colors.chiliMute,
   },
   textWrap: {
     flex: 1,
     marginRight: spacing.sm,
   },
   title: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
+    lineHeight: 22,
+    color: colors.ink,
   },
   subtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.stone,
     marginTop: 2,
   },
   destructive: {
-    color: colors.error,
+    color: colors.chili,
   },
 });

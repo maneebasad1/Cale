@@ -11,7 +11,8 @@ import DateTimePicker, {
 } from '@react-native-community/datetimepicker';
 import type { MealReminderMeal, MealReminderSetting } from '../../types';
 import { MEAL_LABELS } from '../../types';
-import { colors, spacing } from '../../constants/theme';
+import { Icon, MEAL_ICONS } from '../Icon';
+import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import {
   dateFromMinutes,
   minutesFromDate,
@@ -55,6 +56,14 @@ export function MealReminderCard({
         style={styles.header}
         onPress={onToggle}
         activeOpacity={0.7}>
+        <View
+          style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
+          <Icon
+            name={MEAL_ICONS[meal]}
+            size={18}
+            color={isActive ? colors.nori : colors.stone}
+          />
+        </View>
         <View style={styles.headerText}>
           <Text style={[styles.title, isActive && styles.titleActive]}>
             {MEAL_LABELS[meal]}
@@ -62,7 +71,7 @@ export function MealReminderCard({
           <Text style={styles.subtitle}>
             {isActive
               ? `Reminder at ${minutesToLabel(setting.timeMinutes)}`
-              : 'Tap to enable'}
+              : 'Tap to turn on'}
           </Text>
         </View>
         <View style={[styles.toggle, isActive && styles.toggleActive]}>
@@ -110,54 +119,68 @@ export function MealReminderCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    backgroundColor: colors.porcelain,
+    borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.line,
     marginBottom: spacing.md,
     overflow: 'hidden',
   },
   cardActive: {
-    borderColor: colors.primary,
+    borderColor: colors.nori,
+    backgroundColor: colors.noriMute,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
   },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.sm + 2,
+    backgroundColor: colors.steam,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  iconWrapActive: {
+    backgroundColor: colors.porcelain,
+  },
   headerText: {
     flex: 1,
     marginRight: spacing.md,
   },
   title: {
+    fontFamily: fonts.bodySemiBold,
     fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
+    lineHeight: 22,
+    color: colors.ink,
   },
   titleActive: {
-    color: colors.primary,
+    color: colors.nori,
   },
   subtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.stone,
     marginTop: 2,
   },
   toggle: {
     width: 48,
     height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.border,
+    borderRadius: radii.pill,
+    backgroundColor: colors.line,
     padding: 2,
     justifyContent: 'center',
   },
   toggleActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.nori,
   },
   knob: {
     width: 24,
     height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
+    borderRadius: radii.full,
+    backgroundColor: colors.porcelain,
     alignSelf: 'flex-start',
   },
   knobActive: {
@@ -165,18 +188,20 @@ const styles = StyleSheet.create({
   },
   timeButton: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
     paddingVertical: spacing.md,
     alignItems: 'center',
+    backgroundColor: colors.porcelain,
   },
   timeButtonValue: {
+    fontFamily: fonts.displayBold,
     fontSize: 22,
-    fontWeight: '700',
-    color: colors.primary,
+    color: colors.nori,
   },
   iosPickerWrap: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopColor: colors.line,
+    backgroundColor: colors.porcelain,
   },
   iosPicker: {
     height: 150,

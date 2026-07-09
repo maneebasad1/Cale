@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Button } from './Button';
-import { colors, spacing } from '../constants/theme';
+import { colors, radii, spacing, typography } from '../constants/theme';
 import {
   addCustomFood,
   updateCustomFood,
@@ -128,37 +128,37 @@ export function AddCustomFoodForm({
 const styles = StyleSheet.create({
   container: {
     marginTop: spacing.sm,
-    padding: spacing.sm,
-    backgroundColor: colors.chipBg,
-    borderRadius: 10,
+    padding: spacing.md,
+    backgroundColor: colors.noriMute,
+    borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.primary,
   },
   title: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.primaryDark,
   },
   subtitle: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.textSecondary,
     marginTop: 2,
     marginBottom: spacing.sm,
   },
   label: {
-    fontSize: 12,
-    fontWeight: '500',
+    ...typography.caption,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
   input: {
-    backgroundColor: colors.background,
-    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
+    ...typography.body,
     fontSize: 15,
+    lineHeight: 20,
     color: colors.text,
     marginBottom: spacing.sm,
   },
@@ -172,8 +172,8 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.sm,
@@ -181,12 +181,14 @@ const styles = StyleSheet.create({
   },
   inputCompact: {
     flex: 1,
+    ...typography.body,
     fontSize: 15,
+    lineHeight: 20,
     color: colors.text,
     paddingVertical: spacing.sm,
   },
   suffix: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.textSecondary,
     marginLeft: spacing.xs,
   },
@@ -202,8 +204,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   cancelText: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.label,
     color: colors.textSecondary,
   },
 });

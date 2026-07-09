@@ -15,7 +15,9 @@ export function FabButton({ onPress }: FabButtonProps) {
     <TouchableOpacity
       style={[styles.fab, { bottom: spacing.lg + insets.bottom }]}
       onPress={onPress}
-      activeOpacity={0.8}>
+      activeOpacity={0.8}
+      accessibilityLabel="Add entry"
+      accessibilityRole="button">
       <Icon name="add" size={32} color={colors.surface} />
     </TouchableOpacity>
   );
@@ -31,10 +33,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
     elevation: 6,
   },
 });

@@ -12,7 +12,7 @@ import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { LabeledInput } from '../../components/LabeledInput';
 import { Screen } from '../../components/Screen';
 import { UnitToggle } from '../../components/UnitToggle';
-import { colors, spacing } from '../../constants/theme';
+import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import { getProfile, saveProfile } from '../../services/storage';
 import type {
   ActivityLevel,
@@ -95,7 +95,7 @@ export function ProfileBodyScreen() {
     }
 
     if (!weightNum || !heightCm || !ageNum) {
-      Alert.alert('Invalid input', 'Please fill in all fields with valid values.');
+      Alert.alert('Check your details', 'Fill in every field with a valid value.');
       return;
     }
 
@@ -127,7 +127,7 @@ export function ProfileBodyScreen() {
     return (
       <Screen edges={[]}>
         <View style={styles.loading}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>Loading…</Text>
         </View>
       </Screen>
     );
@@ -294,12 +294,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    color: colors.textSecondary,
+    ...typography.body,
+    color: colors.stone,
   },
   sectionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
+    ...typography.label,
+    color: colors.ink,
     marginBottom: spacing.sm,
     marginTop: spacing.sm,
   },
@@ -324,23 +324,22 @@ const styles = StyleSheet.create({
   },
   option: {
     padding: spacing.md,
-    borderRadius: 10,
-    backgroundColor: colors.surface,
+    borderRadius: radii.sm + 2,
+    backgroundColor: colors.porcelain,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.line,
   },
   optionSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.chipBg,
+    borderColor: colors.nori,
+    backgroundColor: colors.noriMute,
   },
   optionText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: colors.text,
+    ...typography.bodyMedium,
+    color: colors.ink,
   },
   optionTextSelected: {
-    color: colors.primary,
-    fontWeight: '600',
+    color: colors.nori,
+    fontFamily: fonts.bodySemiBold,
   },
   saveBtn: {
     marginTop: spacing.md,

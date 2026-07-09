@@ -7,7 +7,15 @@ import { EntryList } from '../../components/EntryList';
 import { FabButton } from '../../components/FabButton';
 import { ProgressBar } from '../../components/ProgressBar';
 import { Screen } from '../../components/Screen';
-import { colors, spacing } from '../../constants/theme';
+import {
+  colors,
+  getProgressTone,
+  progressColor,
+  progressMute,
+  radii,
+  spacing,
+  typography,
+} from '../../constants/theme';
 import { useAddEntryNavigation } from '../../hooks/useAddEntryNavigation';
 import type { HistoryStackParamList } from '../../navigation/types';
 import {
@@ -59,8 +67,19 @@ export function DayDetailScreen({ route }: Props) {
   const total = getTotalCalories({ date, entries });
   const target = profile?.dailyTargetCalories ?? profile?.maintenanceCalories ?? 0;
   const diff = total - target;
-  const isOver = diff > 0;
+  const tone = getProgressTone(total, target);
   const fabOffset = canEdit ? 60 + spacing.lg * 2 + insets.bottom : spacing.xl;
+
+  const badgeLabel =
+    total === 0
+      ? 'Nothing logged this day'
+      : tone === 'over'
+        ? `${diff.toLocaleString()} kcal over target`
+        : diff === 0
+          ? 'Right on target'
+          : tone === 'near'
+            ? `${Math.abs(diff).toLocaleString()} kcal left — nearly there`
+            : `${Math.abs(diff).toLocaleString()} kcal under target`;
 
   return (
     <Screen edges={[]}>
@@ -72,20 +91,14 @@ export function DayDetailScreen({ route }: Props) {
         <View
           style={[
             styles.badge,
-            { backgroundColor: isOver ? '#FFEBEE' : '#E8F5E9' },
+            { backgroundColor: progressMute(tone) },
           ]}>
           <Text
             style={[
               styles.badgeText,
-              { color: isOver ? colors.overMaintenance : colors.underMaintenance },
+              { color: progressColor(tone) },
             ]}>
-            {total === 0
-              ? 'No entries logged'
-              : isOver
-                ? `${diff.toLocaleString()} kcal over target`
-                : diff === 0
-                  ? 'Exactly at target'
-                  : `${Math.abs(diff).toLocaleString()} kcal under target`}
+            {badgeLabel}
           </Text>
         </View>
 
@@ -109,23 +122,21 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   date: {
-    fontSize: 15,
+    ...typography.caption,
     color: colors.textSecondary,
     marginBottom: spacing.md,
   },
   badge: {
     marginTop: spacing.md,
     padding: spacing.md,
-    borderRadius: 10,
+    borderRadius: radii.md,
     alignItems: 'center',
   },
   badgeText: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.label,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...typography.heading,
     color: colors.text,
     marginTop: spacing.lg,
     marginBottom: spacing.md,

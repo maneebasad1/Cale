@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Button } from './Button';
-import { colors, spacing } from '../constants/theme';
+import { Icon } from './Icon';
+import { colors, fonts, radii, spacing, typography } from '../constants/theme';
 import type { WeightUnit } from '../types';
 import { addWeightEntry } from '../services/weightService';
 import { displayWeight, kgToLb, lbToKg } from '../utils/units';
@@ -52,15 +53,23 @@ export function WeightCheckInBanner({
       <TouchableOpacity
         style={styles.banner}
         onPress={() => setExpanded(true)}
-        activeOpacity={0.8}>
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Log this week's weight">
+        <View style={styles.iconWrap}>
+          <Icon name="scale-outline" size={20} color={colors.primary} />
+        </View>
         <View style={styles.bannerText}>
           <Text style={styles.bannerTitle}>Log this week's weight</Text>
           <Text style={styles.bannerSub}>
             Last recorded: {displayWeight(currentWeightKg, weightUnit)}
           </Text>
         </View>
-        <TouchableOpacity onPress={onDismiss} hitSlop={8}>
-          <Text style={styles.dismiss}>×</Text>
+        <TouchableOpacity
+          onPress={onDismiss}
+          hitSlop={8}
+          accessibilityLabel="Dismiss">
+          <Icon name="close" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       </TouchableOpacity>
     );
@@ -94,42 +103,42 @@ const styles = StyleSheet.create({
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.chipBg,
-    borderRadius: 12,
+    backgroundColor: colors.noriMute,
+    borderRadius: radii.md,
     padding: spacing.md,
     marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.primary,
+    gap: spacing.sm,
+  },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.sm,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bannerText: {
     flex: 1,
   },
   bannerTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.primaryDark,
   },
   bannerSub: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.textSecondary,
     marginTop: 2,
   },
-  dismiss: {
-    fontSize: 22,
-    color: colors.textSecondary,
-    paddingHorizontal: spacing.xs,
-  },
   form: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: radii.md,
     padding: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
   },
   formTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text,
     marginBottom: spacing.sm,
   },
@@ -138,25 +147,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
+    borderRadius: radii.sm + 2,
     paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
   },
   input: {
     flex: 1,
+    fontFamily: fonts.displayBold,
     fontSize: 24,
-    fontWeight: '700',
     color: colors.text,
     paddingVertical: spacing.sm,
   },
   suffix: {
-    fontSize: 16,
+    ...typography.body,
     color: colors.textSecondary,
   },
   actions: {
     gap: spacing.xs,
   },
   cancel: {
+    ...typography.label,
     textAlign: 'center',
     color: colors.textSecondary,
     paddingVertical: spacing.xs,

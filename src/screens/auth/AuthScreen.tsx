@@ -6,13 +6,16 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { BrandLogo } from '../../components/BrandLogo';
 import { Button } from '../../components/Button';
+import { Icon } from '../../components/Icon';
 import { Screen } from '../../components/Screen';
+import { APP_TAGLINE } from '../../constants/branding';
 import { isGoogleSignInConfigured, isSupabaseConfigured } from '../../config/supabase';
-import { colors, spacing } from '../../constants/theme';
+import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 
 type AuthMode = 'signIn' | 'signUp';
@@ -31,12 +34,17 @@ export function AuthScreen() {
     return (
       <Screen>
         <View style={styles.centered}>
-          <BrandLogo size="sm" layout="row" style={styles.logo} />
-          <Text style={styles.setupTitle}>Supabase not configured</Text>
-          <Text style={styles.setupText}>
-            Add your project URL and anon key in src/config/supabase.ts, then
-            run supabase/schema.sql in your Supabase dashboard.
-          </Text>
+          <BrandLogo size="lg" showTagline style={styles.setupLogo} />
+          <View style={styles.setupCard}>
+            <View style={styles.setupIconWrap}>
+              <Icon name="alert-circle-outline" size={28} color={colors.saffron} />
+            </View>
+            <Text style={styles.setupTitle}>Almost ready</Text>
+            <Text style={styles.setupText}>
+              Add your project URL and anon key in src/config/supabase.ts, then
+              run supabase/schema.sql in your Supabase dashboard.
+            </Text>
+          </View>
         </View>
       </Screen>
     );
@@ -89,6 +97,12 @@ export function AuthScreen() {
     }
   };
 
+  const switchMode = (next: AuthMode) => {
+    setMode(next);
+    setError(null);
+    setInfo(null);
+  };
+
   return (
     <Screen>
       <KeyboardAvoidingView
@@ -96,61 +110,105 @@ export function AuthScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled">
-          <BrandLogo size="sm" layout="row" style={styles.logo} />
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.hero}>
+            <BrandLogo size="lg" showTagline={false} />
+            <Text style={styles.tagline}>{APP_TAGLINE}</Text>
+          </View>
+
+          <View style={styles.modeToggle}>
+            <TouchableOpacity
+              style={[styles.modeOption, mode === 'signIn' && styles.modeActive]}
+              onPress={() => switchMode('signIn')}
+              accessibilityRole="button"
+              accessibilityState={{ selected: mode === 'signIn' }}>
+              <Text
+                style={[
+                  styles.modeLabel,
+                  mode === 'signIn' && styles.modeLabelActive,
+                ]}>
+                Sign in
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeOption, mode === 'signUp' && styles.modeActive]}
+              onPress={() => switchMode('signUp')}
+              accessibilityRole="button"
+              accessibilityState={{ selected: mode === 'signUp' }}>
+              <Text
+                style={[
+                  styles.modeLabel,
+                  mode === 'signUp' && styles.modeLabelActive,
+                ]}>
+                Sign up
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <Text style={styles.title}>
             {mode === 'signIn' ? 'Welcome back' : 'Create your account'}
           </Text>
           <Text style={styles.subtitle}>
-            Sign in to sync your meals, goals, and progress across devices.
+            {mode === 'signIn'
+              ? 'Sign in to sync meals, goals, and progress across devices.'
+              : 'Save your foods and targets so they follow you everywhere.'}
           </Text>
 
           <View style={styles.form}>
             <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-              placeholderTextColor={colors.textSecondary}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            <View style={styles.inputRow}>
+              <Icon name="mail-outline" size={18} color={colors.stone} />
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                placeholderTextColor={colors.stone}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                accessibilityLabel="Email"
+              />
+            </View>
 
             <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="••••••••"
-              placeholderTextColor={colors.textSecondary}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <View style={styles.inputRow}>
+              <Icon name="lock-closed-outline" size={18} color={colors.stone} />
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="At least 6 characters"
+                placeholderTextColor={colors.stone}
+                secureTextEntry
+                autoCapitalize="none"
+                accessibilityLabel="Password"
+              />
+            </View>
 
-            {error && <Text style={styles.error}>{error}</Text>}
-            {info && <Text style={styles.info}>{info}</Text>}
+            {error ? (
+              <View style={styles.messageRow}>
+                <Icon name="alert-circle-outline" size={16} color={colors.chili} />
+                <Text style={styles.error}>{error}</Text>
+              </View>
+            ) : null}
+            {info ? (
+              <View style={styles.messageRow}>
+                <Icon
+                  name="checkmark-circle-outline"
+                  size={16}
+                  color={colors.nori}
+                />
+                <Text style={styles.info}>{info}</Text>
+              </View>
+            ) : null}
 
             <Button
-              title={mode === 'signIn' ? 'Sign In' : 'Create Account'}
+              title={mode === 'signIn' ? 'Sign in' : 'Create account'}
               onPress={handleSubmit}
               loading={loading}
               style={styles.submitBtn}
-            />
-
-            <Button
-              title={
-                mode === 'signIn'
-                  ? 'Need an account? Sign up'
-                  : 'Already have an account? Sign in'
-              }
-              variant="secondary"
-              onPress={() => {
-                setMode(mode === 'signIn' ? 'signUp' : 'signIn');
-                setError(null);
-                setInfo(null);
-              }}
             />
 
             {isGoogleSignInConfigured() && (
@@ -160,13 +218,25 @@ export function AuthScreen() {
                   <Text style={styles.dividerText}>or</Text>
                   <View style={styles.dividerLine} />
                 </View>
-                <Button
-                  title="Continue with Google"
-                  variant="secondary"
+                <TouchableOpacity
+                  style={[
+                    styles.googleBtn,
+                    (loading || googleLoading) && styles.googleDisabled,
+                  ]}
                   onPress={handleGoogleSignIn}
-                  loading={googleLoading}
-                  disabled={loading}
-                />
+                  disabled={loading || googleLoading}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Continue with Google">
+                  {googleLoading ? (
+                    <Text style={styles.googleText}>Connecting…</Text>
+                  ) : (
+                    <>
+                      <Icon name="logo-google" size={18} color={colors.ink} />
+                      <Text style={styles.googleText}>Continue with Google</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </>
             )}
           </View>
@@ -182,64 +252,109 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: spacing.lg,
     justifyContent: 'center',
+    paddingVertical: spacing.xl,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     padding: spacing.lg,
+    alignItems: 'center',
   },
-  logo: {
-    alignSelf: 'flex-start',
+  hero: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  tagline: {
+    ...typography.body,
+    color: colors.stone,
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+  modeToggle: {
+    flexDirection: 'row',
+    backgroundColor: colors.border,
+    borderRadius: radii.sm,
+    padding: 3,
     marginBottom: spacing.lg,
   },
+  modeOption: {
+    flex: 1,
+    paddingVertical: spacing.sm + 2,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  modeActive: {
+    backgroundColor: colors.surface,
+  },
+  modeLabel: {
+    ...typography.label,
+    color: colors.stone,
+  },
+  modeLabelActive: {
+    color: colors.nori,
+  },
   title: {
+    fontFamily: fonts.displayBold,
     fontSize: 28,
-    fontWeight: '700',
-    color: colors.text,
+    lineHeight: 34,
+    letterSpacing: -0.3,
+    color: colors.ink,
     marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    lineHeight: 22,
+    ...typography.body,
+    color: colors.stone,
     marginBottom: spacing.lg,
   },
   form: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
+    backgroundColor: colors.porcelain,
+    borderRadius: radii.xl,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.line,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
+    ...typography.label,
+    color: colors.stone,
     marginBottom: spacing.xs,
   },
-  input: {
-    backgroundColor: colors.background,
-    borderRadius: 10,
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.steam,
+    borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.line,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: 16,
-    color: colors.text,
     marginBottom: spacing.md,
   },
-  error: {
-    color: colors.error,
-    fontSize: 14,
+  input: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 16,
+    lineHeight: 22,
+    color: colors.ink,
+    paddingVertical: spacing.md,
+  },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.xs,
     marginBottom: spacing.sm,
+  },
+  error: {
+    ...typography.caption,
+    color: colors.chili,
+    flex: 1,
   },
   info: {
-    color: colors.primary,
-    fontSize: 14,
-    marginBottom: spacing.sm,
+    ...typography.caption,
+    color: colors.nori,
+    flex: 1,
   },
   submitBtn: {
-    marginBottom: spacing.sm,
+    marginTop: spacing.xs,
   },
   dividerRow: {
     flexDirection: 'row',
@@ -250,21 +365,62 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
+    backgroundColor: colors.line,
   },
   dividerText: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.stone,
+  },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    minHeight: 52,
+    borderRadius: radii.md,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+  },
+  googleDisabled: {
+    opacity: 0.5,
+  },
+  googleText: {
+    ...typography.label,
+    fontSize: 16,
+    color: colors.ink,
+  },
+  setupLogo: {
+    marginBottom: spacing.xl,
+  },
+  setupCard: {
+    width: '100%',
+    backgroundColor: colors.porcelain,
+    borderRadius: radii.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: 'center',
+  },
+  setupIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: radii.full,
+    backgroundColor: colors.saffronMute,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
   },
   setupTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
+    fontFamily: fonts.displayBold,
+    fontSize: 22,
+    color: colors.ink,
     marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   setupText: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    lineHeight: 22,
+    ...typography.body,
+    color: colors.stone,
+    textAlign: 'center',
   },
 });

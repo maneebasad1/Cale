@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, spacing } from '../constants/theme';
+import { colors, radii, spacing, typography } from '../constants/theme';
 
 const QUICK_AMOUNTS = [100, 250, 500];
 
@@ -32,8 +32,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   label: {
-    fontSize: 12,
-    fontWeight: '500',
+    ...typography.overline,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
@@ -44,14 +43,13 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: 20,
-    backgroundColor: colors.chipBg,
+    borderRadius: radii.pill,
+    backgroundColor: colors.noriMute,
     borderWidth: 1,
     borderColor: colors.primary,
   },
   chipText: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.primary,
   },
 });

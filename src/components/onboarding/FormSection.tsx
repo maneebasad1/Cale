@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '../../constants/theme';
+import { colors, radii, spacing, typography } from '../../constants/theme';
 
 interface FormSectionProps {
   title: string;
@@ -21,17 +21,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   title: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.overline,
     color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
     marginBottom: spacing.sm,
     marginLeft: spacing.xs,
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: radii.lg - 2,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,

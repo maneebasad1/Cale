@@ -5,7 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileMenuRow } from '../../components/profile/ProfileMenuRow';
 import { UserAvatar } from '../../components/profile/UserAvatar';
 import { Screen } from '../../components/Screen';
-import { colors, spacing } from '../../constants/theme';
+import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import type { ProfileStackParamList } from '../../navigation/types';
 import { getProfile } from '../../services/storage';
@@ -35,7 +35,7 @@ export function ProfileScreen() {
     return (
       <Screen edges={[]}>
         <View style={styles.loading}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>Loading…</Text>
         </View>
       </Screen>
     );
@@ -115,11 +115,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    color: colors.textSecondary,
+    ...typography.body,
+    color: colors.stone,
   },
   headerCard: {
-    backgroundColor: colors.chipBg,
-    borderRadius: 12,
+    backgroundColor: colors.noriMute,
+    borderRadius: radii.lg,
     padding: spacing.lg,
     marginBottom: spacing.lg,
     alignItems: 'center',
@@ -128,31 +129,31 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   displayName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
+    ...typography.heading,
+    color: colors.ink,
     marginBottom: spacing.xs,
   },
   email: {
-    fontSize: 14,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.stone,
     marginBottom: spacing.md,
   },
   targetValue: {
+    fontFamily: fonts.displayBold,
     fontSize: 28,
-    fontWeight: '700',
-    color: colors.primary,
+    lineHeight: 34,
+    color: colors.nori,
   },
   targetSub: {
-    fontSize: 14,
-    color: colors.textSecondary,
+    ...typography.caption,
+    color: colors.stone,
     marginTop: spacing.xs,
   },
   menuGroup: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
+    backgroundColor: colors.porcelain,
+    borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.line,
     overflow: 'hidden',
   },
 });

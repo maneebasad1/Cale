@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, spacing } from '../constants/theme';
+import { colors, fonts, radii, spacing, typography } from '../constants/theme';
 
 interface LabeledInputProps {
   label: string;
@@ -21,7 +21,7 @@ export function LabeledInput({
 }: LabeledInputProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
       <View style={styles.inputRow}>
         <TextInput
           style={styles.input}
@@ -42,8 +42,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.label,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
@@ -51,19 +50,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 10,
+    borderRadius: radii.sm + 2,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
   },
   input: {
     flex: 1,
+    fontFamily: fonts.body,
     fontSize: 18,
     color: colors.text,
     paddingVertical: spacing.md,
   },
   suffix: {
-    fontSize: 16,
+    ...typography.body,
     color: colors.textSecondary,
     marginLeft: spacing.sm,
   },

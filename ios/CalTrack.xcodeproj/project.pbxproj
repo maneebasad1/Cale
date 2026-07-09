@@ -12,6 +12,13 @@
 		415D7ADE3B9666AB02779B32 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		A4C4C22298FB410C9E32F0CA /* DMSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BED3531021304D798AEBA833 /* DMSans-Regular.ttf */; };
+		DED9E09429124D5CA2DC24F9 /* DMSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6F288B084DF44B73BBAA3A39 /* DMSans-Medium.ttf */; };
+		3F64F7BF16434EC99DB2B571 /* SourceSerif4-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A74C94E86D904A0BAA854579 /* SourceSerif4-Bold.ttf */; };
+		6BF1C240AF7D4DDCB82F8443 /* DMSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 81453D7BAFE84CF38079D7FD /* DMSans-Bold.ttf */; };
+		A62FFAB3BFF345A5B85BFE5F /* SourceSerif4-Semibold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 05E2FAF67FA449ACAE3E3663 /* SourceSerif4-Semibold.ttf */; };
+		7FD7BF3F983A47BAA65F4414 /* DMSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 85DB588B68CA480FB3ECCFCF /* DMSans-SemiBold.ttf */; };
+		FDB84A786DE842CC9BAD3E35 /* SourceSerif4-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 947452B46E464EC8B15357F3 /* SourceSerif4-Regular.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,6 +32,13 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = CalTrack/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = CalTrack/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		BED3531021304D798AEBA833 /* DMSans-Regular.ttf */ = {isa = PBXFileReference; name = "DMSans-Regular.ttf"; path = "../assets/fonts/DMSans-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		6F288B084DF44B73BBAA3A39 /* DMSans-Medium.ttf */ = {isa = PBXFileReference; name = "DMSans-Medium.ttf"; path = "../assets/fonts/DMSans-Medium.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		A74C94E86D904A0BAA854579 /* SourceSerif4-Bold.ttf */ = {isa = PBXFileReference; name = "SourceSerif4-Bold.ttf"; path = "../assets/fonts/SourceSerif4-Bold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		81453D7BAFE84CF38079D7FD /* DMSans-Bold.ttf */ = {isa = PBXFileReference; name = "DMSans-Bold.ttf"; path = "../assets/fonts/DMSans-Bold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		05E2FAF67FA449ACAE3E3663 /* SourceSerif4-Semibold.ttf */ = {isa = PBXFileReference; name = "SourceSerif4-Semibold.ttf"; path = "../assets/fonts/SourceSerif4-Semibold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		85DB588B68CA480FB3ECCFCF /* DMSans-SemiBold.ttf */ = {isa = PBXFileReference; name = "DMSans-SemiBold.ttf"; path = "../assets/fonts/DMSans-SemiBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		947452B46E464EC8B15357F3 /* SourceSerif4-Regular.ttf */ = {isa = PBXFileReference; name = "SourceSerif4-Regular.ttf"; path = "../assets/fonts/SourceSerif4-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,6 +89,7 @@
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
+				3D06259419104A0CA3615009 /* Resources */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -97,6 +112,21 @@
 			);
 			path = Pods;
 			sourceTree = "<group>";
+		};
+		3D06259419104A0CA3615009 /* Resources */ = {
+			isa = "PBXGroup";
+			children = (
+				BED3531021304D798AEBA833 /* DMSans-Regular.ttf */,
+				6F288B084DF44B73BBAA3A39 /* DMSans-Medium.ttf */,
+				A74C94E86D904A0BAA854579 /* SourceSerif4-Bold.ttf */,
+				81453D7BAFE84CF38079D7FD /* DMSans-Bold.ttf */,
+				05E2FAF67FA449ACAE3E3663 /* SourceSerif4-Semibold.ttf */,
+				85DB588B68CA480FB3ECCFCF /* DMSans-SemiBold.ttf */,
+				947452B46E464EC8B15357F3 /* SourceSerif4-Regular.ttf */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+			path = "";
 		};
 /* End PBXGroup section */
 
@@ -161,6 +191,13 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				415D7ADE3B9666AB02779B32 /* PrivacyInfo.xcprivacy in Resources */,
+				A4C4C22298FB410C9E32F0CA /* DMSans-Regular.ttf in Resources */,
+				DED9E09429124D5CA2DC24F9 /* DMSans-Medium.ttf in Resources */,
+				3F64F7BF16434EC99DB2B571 /* SourceSerif4-Bold.ttf in Resources */,
+				6BF1C240AF7D4DDCB82F8443 /* DMSans-Bold.ttf in Resources */,
+				A62FFAB3BFF345A5B85BFE5F /* SourceSerif4-Semibold.ttf in Resources */,
+				7FD7BF3F983A47BAA65F4414 /* DMSans-SemiBold.ttf in Resources */,
+				FDB84A786DE842CC9BAD3E35 /* SourceSerif4-Regular.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabIcon } from '../components/Icon';
 import { APP_NAME } from '../constants/branding';
-import { colors } from '../constants/theme';
+import { colors, fonts } from '../constants/theme';
 import { AddEntryScreen } from '../screens/entry/AddEntryScreen';
 import { MyFoodsScreen } from '../screens/foods/MyFoodsScreen';
 import { DayDetailScreen } from '../screens/history/DayDetailScreen';
@@ -26,7 +26,7 @@ function HistoryNavigator() {
       screenOptions={{
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.text,
-        headerTitleStyle: { fontWeight: '600' },
+        headerTitleStyle: { fontFamily: fonts.bodySemiBold, fontSize: 17 },
         headerShadowVisible: false,
       }}>
       <HistoryStack.Screen
@@ -37,7 +37,7 @@ function HistoryNavigator() {
       <HistoryStack.Screen
         name="DayDetail"
         component={DayDetailScreen}
-        options={{ title: 'Day Detail' }}
+        options={{ title: 'Day detail' }}
       />
     </HistoryStack.Navigator>
   );
@@ -49,10 +49,14 @@ function TabNavigator() {
       screenOptions={({ route }) => ({
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.text,
-        headerTitleStyle: { fontWeight: '600' },
+        headerTitleStyle: { fontFamily: fonts.bodySemiBold, fontSize: 17 },
         headerShadowVisible: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
+        tabBarLabelStyle: {
+          fontFamily: fonts.bodyMedium,
+          fontSize: 12,
+        },
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
@@ -91,7 +95,7 @@ export function MainNavigator() {
       screenOptions={{
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.text,
-        headerTitleStyle: { fontWeight: '600' },
+        headerTitleStyle: { fontFamily: fonts.bodySemiBold, fontSize: 17 },
         headerShadowVisible: false,
         contentStyle: { backgroundColor: colors.background },
       }}>
@@ -103,7 +107,7 @@ export function MainNavigator() {
       <MainStack.Screen
         name="AddEntry"
         component={AddEntryScreen}
-        options={{ title: 'Add Entry' }}
+        options={{ title: 'Add entry' }}
       />
       <MainStack.Screen
         name="MyFoods"

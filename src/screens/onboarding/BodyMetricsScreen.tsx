@@ -109,7 +109,7 @@ export function BodyMetricsScreen({ navigation }: Props) {
         <OnboardingHeader
           step={1}
           title="Your body stats"
-          subtitle="We'll use your weight and height to estimate calorie needs."
+          subtitle="Weight and height help us estimate your daily calorie needs."
         />
 
         <FormSection title="Current weight">

@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { colors } from '../constants/theme';
+import { colors, fonts } from '../constants/theme';
 import { ActivityScreen } from '../screens/onboarding/ActivityScreen';
 import { BodyMetricsScreen } from '../screens/onboarding/BodyMetricsScreen';
 import { GoalScreen } from '../screens/onboarding/GoalScreen';
@@ -16,7 +16,7 @@ export function OnboardingNavigator() {
       screenOptions={{
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.text,
-        headerTitleStyle: { fontWeight: '600' },
+        headerTitleStyle: { fontFamily: fonts.bodySemiBold, fontSize: 17 },
         headerShadowVisible: false,
         contentStyle: { backgroundColor: colors.background },
       }}>
@@ -28,7 +28,7 @@ export function OnboardingNavigator() {
       <Stack.Screen
         name="PersonalInfo"
         component={PersonalInfoScreen}
-        options={{ title: 'About You' }}
+        options={{ title: 'About you' }}
       />
       <Stack.Screen
         name="Activity"
@@ -38,7 +38,7 @@ export function OnboardingNavigator() {
       <Stack.Screen
         name="Goal"
         component={GoalScreen}
-        options={{ title: 'Your Goal' }}
+        options={{ title: 'Your goal' }}
       />
       <Stack.Screen
         name="Summary"

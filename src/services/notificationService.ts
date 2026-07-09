@@ -105,7 +105,7 @@ export async function scheduleMealReminder(
   await notifee.createTriggerNotification(
     {
       id: notificationId,
-      title: 'Calo',
+      title: 'CALE',
       body: mealReminderBody(meal),
       android: {
         channelId: CHANNEL_ID,
@@ -129,7 +129,7 @@ export async function sendTestNotification(
   await ensureChannel();
   await notifee.displayNotification({
     id: TEST_NOTIFICATION_ID,
-    title: 'Calo',
+    title: 'CALE',
     body: mealReminderBody(meal),
     android: {
       channelId: CHANNEL_ID,

@@ -11,8 +11,9 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { AddCustomFoodForm } from '../../components/AddCustomFoodForm';
 import { Button } from '../../components/Button';
+import { EmptyState } from '../../components/EmptyState';
 import { Screen } from '../../components/Screen';
-import { colors, spacing } from '../../constants/theme';
+import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import {
   deleteCustomFood,
   getCustomFoods,
@@ -85,10 +86,15 @@ export function MyFoodsScreen() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
         }>
         <Text style={styles.description}>
-          Foods you save here appear in search when logging meals.
+          Foods you save here show up in search when you log a meal.
         </Text>
 
         {!formVisible && (
@@ -111,15 +117,16 @@ export function MyFoodsScreen() {
         )}
 
         {foods.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>No saved foods yet</Text>
-            <Text style={styles.emptyText}>
-              Add your go-to meals here for faster logging.
-            </Text>
-          </View>
+          <EmptyState
+            icon="nutrition-outline"
+            title="Your kitchen shelf is empty"
+            message="Save homemade dishes and go-to meals so logging takes seconds."
+          />
         ) : (
           <View style={styles.list}>
-            <Text style={styles.listTitle}>Your foods ({foods.length})</Text>
+            <Text style={styles.listTitle}>
+              Your foods · {foods.length}
+            </Text>
             {foods.map(food => (
               <View key={food.id} style={styles.row}>
                 <View style={styles.rowMain}>
@@ -157,44 +164,27 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   description: {
+    ...typography.body,
     fontSize: 14,
-    color: colors.textSecondary,
     lineHeight: 20,
+    color: colors.textSecondary,
     marginBottom: spacing.md,
   },
   addBtn: {
     minHeight: 48,
     marginBottom: spacing.lg,
   },
-  empty: {
-    paddingVertical: spacing.xl,
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
   list: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: radii.lg - 2,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    marginTop: spacing.md,
   },
   listTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.overline,
     color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
     marginBottom: spacing.sm,
   },
   row: {
@@ -209,12 +199,12 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   name: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text,
   },
   meta: {
-    fontSize: 13,
+    ...typography.caption,
+    fontFamily: fonts.body,
     color: colors.textSecondary,
     marginTop: 2,
   },
@@ -226,13 +216,11 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
   editText: {
+    ...typography.label,
     color: colors.primary,
-    fontSize: 14,
-    fontWeight: '500',
   },
   deleteText: {
-    color: colors.error,
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.label,
+    color: colors.chili,
   },
 });

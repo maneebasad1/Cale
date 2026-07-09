@@ -6,7 +6,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { colors, spacing } from '../constants/theme';
+import { colors, radii, spacing, typography } from '../constants/theme';
 
 interface UnitToggleProps<T extends string> {
   options: { value: T; label: string }[];
@@ -30,7 +30,9 @@ export function UnitToggle<T extends string>({
             key={option.value}
             style={[styles.option, selected && styles.optionSelected]}
             onPress={() => onChange(option.value)}
-            activeOpacity={0.7}>
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}>
             <Text style={[styles.label, selected && styles.labelSelected]}>
               {option.label}
             </Text>
@@ -45,7 +47,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     backgroundColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radii.sm,
     padding: 2,
   },
   option: {
@@ -58,12 +60,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
+    ...typography.label,
     color: colors.textSecondary,
   },
   labelSelected: {
     color: colors.primary,
-    fontWeight: '600',
   },
 });

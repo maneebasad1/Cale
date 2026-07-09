@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { colors } from '../constants/theme';
+import { colors, fonts } from '../constants/theme';
 import { ProfileAccountScreen } from '../screens/profile/ProfileAccountScreen';
 import { ProfileBodyScreen } from '../screens/profile/ProfileBodyScreen';
 import { ProfileGoalsScreen } from '../screens/profile/ProfileGoalsScreen';
@@ -15,9 +15,9 @@ export function ProfileNavigator() {
   return (
     <ProfileStack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: colors.surface },
-        headerTintColor: colors.text,
-        headerTitleStyle: { fontWeight: '600' },
+        headerStyle: { backgroundColor: colors.porcelain },
+        headerTintColor: colors.ink,
+        headerTitleStyle: { fontFamily: fonts.bodySemiBold, fontSize: 17 },
         headerShadowVisible: false,
       }}>
       <ProfileStack.Screen

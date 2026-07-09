@@ -1,6 +1,7 @@
 import React from 'react';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/theme';
+import type { MealType } from '../types';
 
 export type IconName =
   | 'home'
@@ -9,16 +10,41 @@ export type IconName =
   | 'settings'
   | 'add'
   | 'checkmark-circle'
+  | 'checkmark-circle-outline'
   | 'trending-down'
   | 'trending-up'
-  | 'person'
   | 'fitness'
+  | 'fitness-outline'
   | 'flag'
+  | 'flag-outline'
   | 'flame'
+  | 'flame-outline'
   | 'arrow-down'
   | 'arrow-up'
   | 'create-outline'
-  | 'trash-outline';
+  | 'trash-outline'
+  | 'notifications-outline'
+  | 'person-circle-outline'
+  | 'settings-outline'
+  | 'restaurant-outline'
+  | 'scale-outline'
+  | 'body-outline'
+  | 'log-out-outline'
+  | 'sunny-outline'
+  | 'partly-sunny-outline'
+  | 'moon-outline'
+  | 'cafe-outline'
+  | 'nutrition-outline'
+  | 'book-outline'
+  | 'search-outline'
+  | 'chevron-forward'
+  | 'close'
+  | 'time-outline'
+  | 'alert-circle-outline'
+  | 'leaf-outline'
+  | 'mail-outline'
+  | 'lock-closed-outline'
+  | 'logo-google';
 
 const TAB_ICONS: Record<
   'home' | 'calendar' | 'person',
@@ -27,6 +53,13 @@ const TAB_ICONS: Record<
   home: { active: 'home', inactive: 'home-outline' },
   calendar: { active: 'calendar', inactive: 'calendar-outline' },
   person: { active: 'person', inactive: 'person-outline' },
+};
+
+export const MEAL_ICONS: Record<MealType, IconName> = {
+  breakfast: 'sunny-outline',
+  lunch: 'partly-sunny-outline',
+  dinner: 'moon-outline',
+  snack: 'cafe-outline',
 };
 
 interface IconProps {
