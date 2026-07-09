@@ -121,3 +121,19 @@ export async function localIsEmpty(): Promise<boolean> {
   const hasLogs = Object.keys(logs).length > 0;
   return !profile && !hasLogs && foods.length === 0 && weights.length === 0;
 }
+
+/** Wipe all local-first entity data + sync queue (call on sign-out / account switch). */
+export async function resetLocalEntityStore(): Promise<void> {
+  const { clearSyncQueue } = await import('./syncQueue');
+  await Promise.all([
+    localClearProfile(),
+    localSaveAllLogs({}),
+    localSaveCustomFoods([]),
+    localSaveWeightEntries([]),
+    clearSyncQueue(),
+    localClearHydratedUserId(),
+  ]);
+  void import('./widgetSnapshot')
+    .then(mod => mod.refreshHomeWidget())
+    .catch(() => undefined);
+}

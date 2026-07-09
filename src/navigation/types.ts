@@ -71,7 +71,6 @@ export type ProfileStackParamList = {
   ProfileGoals: undefined;
   ProfileWeight: undefined;
   ProfileNotifications: undefined;
-  ProfileAccount: undefined;
 };
 
 export type HistoryStackParamList = {

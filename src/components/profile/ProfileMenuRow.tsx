@@ -1,5 +1,11 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Icon, type IconName } from '../Icon';
 import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 
@@ -9,6 +15,12 @@ interface ProfileMenuRowProps {
   subtitle?: string;
   onPress: () => void;
   destructive?: boolean;
+  /** Hide trailing chevron for actions (sign out, delete). Default true. */
+  showChevron?: boolean;
+  disabled?: boolean;
+  loading?: boolean;
+  /** Hide bottom divider (last row in a group). */
+  last?: boolean;
 }
 
 export function ProfileMenuRow({
@@ -17,20 +29,29 @@ export function ProfileMenuRow({
   subtitle,
   onPress,
   destructive,
+  showChevron = true,
+  disabled,
+  loading,
+  last,
 }: ProfileMenuRowProps) {
   const iconColor = destructive ? colors.chili : colors.nori;
 
   return (
     <TouchableOpacity
-      style={styles.row}
+      style={[styles.row, last && styles.rowLast, disabled && styles.disabled]}
       onPress={onPress}
-      activeOpacity={0.7}>
+      activeOpacity={0.7}
+      disabled={disabled || loading}>
       <View
         style={[
           styles.iconWrap,
           destructive && styles.iconWrapDestructive,
         ]}>
-        <Icon name={icon} size={20} color={iconColor} />
+        {loading ? (
+          <ActivityIndicator size="small" color={iconColor} />
+        ) : (
+          <Icon name={icon} size={20} color={iconColor} />
+        )}
       </View>
       <View style={styles.textWrap}>
         <Text style={[styles.title, destructive && styles.destructive]}>
@@ -38,11 +59,13 @@ export function ProfileMenuRow({
         </Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
-      <Icon
-        name="chevron-forward"
-        size={18}
-        color={destructive ? colors.chili : colors.stone}
-      />
+      {showChevron ? (
+        <Icon
+          name="chevron-forward"
+          size={18}
+          color={destructive ? colors.chili : colors.stone}
+        />
+      ) : null}
     </TouchableOpacity>
   );
 }
@@ -55,6 +78,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.line,
+  },
+  rowLast: {
+    borderBottomWidth: 0,
+  },
+  disabled: {
+    opacity: 0.5,
   },
   iconWrap: {
     width: 36,

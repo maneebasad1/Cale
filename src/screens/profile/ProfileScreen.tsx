@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileMenuRow } from '../../components/profile/ProfileMenuRow';
@@ -9,6 +9,7 @@ import { SyncStatusIndicator } from '../../components/SyncStatusIndicator';
 import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import type { ProfileStackParamList } from '../../navigation/types';
+import { deleteAccount } from '../../services/accountService';
 import { getProfile } from '../../services/storage';
 import type { UserProfile } from '../../types';
 import { getUserDisplayName } from '../../utils/authUser';
@@ -18,8 +19,9 @@ type Nav = NativeStackNavigationProp<ProfileStackParamList, 'ProfileHome'>;
 
 export function ProfileScreen() {
   const navigation = useNavigation<Nav>();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadProfile = useCallback(async () => {
     const p = await getProfile();
@@ -31,6 +33,48 @@ export function ProfileScreen() {
       loadProfile();
     }, [loadProfile]),
   );
+
+  const handleSignOut = () => {
+    Alert.alert('Sign out', 'Sign out of your CALE account?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign out', style: 'destructive', onPress: signOut },
+    ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete account',
+      'This permanently deletes your account and all your data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete my account',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Are you sure?',
+              'Your calorie logs, custom foods, and weight history will be permanently removed.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Yes, delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    setDeleting(true);
+                    const { error } = await deleteAccount();
+                    setDeleting(false);
+                    if (error) {
+                      Alert.alert('Could not delete account', error);
+                    }
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
+  };
 
   if (!profile) {
     return (
@@ -53,7 +97,9 @@ export function ProfileScreen() {
 
   return (
     <Screen edges={[]}>
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}>
         <View style={styles.headerCard}>
           <UserAvatar user={user} size={80} style={styles.avatar} />
           {displayName ? (
@@ -94,23 +140,38 @@ export function ProfileScreen() {
             title="Notifications"
             subtitle={enabledMealReminderSummary(profile)}
             onPress={() => navigation.navigate('ProfileNotifications')}
-          />
-          <ProfileMenuRow
-            icon="person-circle-outline"
-            title="Account"
-            subtitle="Sign out and account options"
-            onPress={() => navigation.navigate('ProfileAccount')}
+            last
           />
         </View>
-      </View>
+
+        <View style={styles.menuGroup}>
+          <ProfileMenuRow
+            icon="trash-outline"
+            title="Delete account"
+            subtitle="Permanently remove your account and data"
+            onPress={handleDeleteAccount}
+            destructive
+            showChevron={false}
+            loading={deleting}
+          />
+          <ProfileMenuRow
+            icon="log-out-outline"
+            title="Sign out"
+            subtitle="Sign out of your account"
+            onPress={handleSignOut}
+            showChevron={false}
+            last
+          />
+        </View>
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   loading: {
     flex: 1,
@@ -158,5 +219,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
     overflow: 'hidden',
+    marginBottom: spacing.lg,
   },
 });

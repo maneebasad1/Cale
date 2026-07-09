@@ -1,7 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors, fonts } from '../constants/theme';
-import { ProfileAccountScreen } from '../screens/profile/ProfileAccountScreen';
 import { ProfileBodyScreen } from '../screens/profile/ProfileBodyScreen';
 import { ProfileGoalsScreen } from '../screens/profile/ProfileGoalsScreen';
 import { ProfileNotificationsScreen } from '../screens/profile/ProfileNotificationsScreen';
@@ -44,11 +43,6 @@ export function ProfileNavigator() {
         name="ProfileNotifications"
         component={ProfileNotificationsScreen}
         options={{ title: 'Notifications' }}
-      />
-      <ProfileStack.Screen
-        name="ProfileAccount"
-        component={ProfileAccountScreen}
-        options={{ title: 'Account' }}
       />
     </ProfileStack.Navigator>
   );

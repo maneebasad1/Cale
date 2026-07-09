@@ -10,6 +10,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { isSupabaseConfigured } from '../config/supabase';
 import { getSupabase } from '../lib/supabase';
 import { signInWithGoogleNative, signOutGoogle } from '../services/googleAuth';
+import { resetLocalEntityStore } from '../services/localStore';
 
 interface AuthContextValue {
   session: Session | null;
@@ -44,16 +45,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const supabase = getSupabase();
+    let lastUserId: string | null | undefined;
+
+    const applySession = async (nextSession: Session | null) => {
+      const nextUserId = nextSession?.user?.id ?? null;
+      // Wipe local cache whenever the signed-in user changes (including first
+      // login after another account left data behind).
+      if (
+        lastUserId !== undefined &&
+        lastUserId !== nextUserId &&
+        (lastUserId !== null || nextUserId !== null)
+      ) {
+        await resetLocalEntityStore();
+      }
+      lastUserId = nextUserId;
+      setSession(nextSession);
+      setAuthLoading(false);
+    };
 
     supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setAuthLoading(false);
+      void applySession(data.session);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, nextSession) => {
-        setSession(nextSession);
-        setAuthLoading(false);
+        void applySession(nextSession);
       },
     );
 
@@ -85,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     await signOutGoogle();
     await getSupabase().auth.signOut();
+    await resetLocalEntityStore();
     setSession(null);
   }, []);
 

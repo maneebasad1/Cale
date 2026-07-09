@@ -18,14 +18,6 @@ import {
   subscribeSyncStatus,
   type SyncStatusSnapshot,
 } from '../services/sync';
-import { clearSyncQueue } from '../services/syncQueue';
-import {
-  localClearHydratedUserId,
-  localClearProfile,
-  localSaveAllLogs,
-  localSaveCustomFoods,
-  localSaveWeightEntries,
-} from '../services/localStore';
 
 interface SyncContextValue {
   snapshot: SyncStatusSnapshot;
@@ -38,17 +30,6 @@ const SyncContext = createContext<SyncContextValue>({
   retrySync: async () => {},
   refresh: async () => {},
 });
-
-export async function resetLocalDataOnSignOut(): Promise<void> {
-  await Promise.all([
-    localClearProfile(),
-    localSaveAllLogs({}),
-    localSaveCustomFoods([]),
-    localSaveWeightEntries([]),
-    clearSyncQueue(),
-    localClearHydratedUserId(),
-  ]);
-}
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, authLoading } = useAuth();

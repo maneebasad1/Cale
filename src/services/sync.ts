@@ -17,6 +17,7 @@ import {
   localSaveProfile,
   localSaveWeightEntries,
   localSetHydratedUserId,
+  resetLocalEntityStore,
 } from './localStore';
 import * as db from './supabaseData';
 import {
@@ -130,8 +131,8 @@ async function processItem(item: SyncQueueItem): Promise<void> {
 }
 
 /**
- * Pull remote → local only when local store is empty for this user.
- * Does not overwrite existing local data.
+ * Pull remote → local for the current user when local is empty.
+ * Clears leftover data from a previous account before hydrating.
  */
 export async function hydrateFromRemoteIfNeeded(): Promise<boolean> {
   const userId = await db.tryGetUserId();
@@ -140,14 +141,18 @@ export async function hydrateFromRemoteIfNeeded(): Promise<boolean> {
   }
 
   const hydratedFor = await localGetHydratedUserId();
-  if (hydratedFor === userId) {
+  const empty = await localIsEmpty();
+
+  // Same user already has local data — local-first, do not overwrite.
+  if (hydratedFor === userId && !empty) {
     return false;
   }
 
-  const empty = await localIsEmpty();
-  if (!empty) {
-    await localSetHydratedUserId(userId);
-    return false;
+  // Leftover cache from another account (or pre-fix orphaned data).
+  if (hydratedFor && hydratedFor !== userId) {
+    await resetLocalEntityStore();
+  } else if (!hydratedFor && !empty) {
+    await resetLocalEntityStore();
   }
 
   try {
@@ -169,7 +174,9 @@ export async function hydrateFromRemoteIfNeeded(): Promise<boolean> {
       .catch(() => undefined);
     return true;
   } catch {
-    // Offline or remote error — keep local empty; retry later.
+    // Claim this user so offline local writes aren't wiped as "orphaned".
+    // Empty store + same userId still retries pull on the next call.
+    await localSetHydratedUserId(userId);
     return false;
   }
 }
