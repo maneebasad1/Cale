@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ProfileMenuRow } from '../../components/profile/ProfileMenuRow';
 import { UserAvatar } from '../../components/profile/UserAvatar';
 import { Screen } from '../../components/Screen';
@@ -17,11 +18,19 @@ import { enabledMealReminderSummary } from '../../utils/mealReminders';
 
 type Nav = NativeStackNavigationProp<ProfileStackParamList, 'ProfileHome'>;
 
+type DialogState =
+  | { type: 'none' }
+  | { type: 'signOut' }
+  | { type: 'delete' }
+  | { type: 'deleteConfirm' }
+  | { type: 'error'; message: string };
+
 export function ProfileScreen() {
   const navigation = useNavigation<Nav>();
   const { user, signOut } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [dialog, setDialog] = useState<DialogState>({ type: 'none' });
 
   const loadProfile = useCallback(async () => {
     const p = await getProfile();
@@ -34,46 +43,17 @@ export function ProfileScreen() {
     }, [loadProfile]),
   );
 
-  const handleSignOut = () => {
-    Alert.alert('Sign out', 'Sign out of your CALE account?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: signOut },
-    ]);
-  };
+  const closeDialog = () => setDialog({ type: 'none' });
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete account',
-      'This permanently deletes your account and all your data. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete my account',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Are you sure?',
-              'Your calorie logs, custom foods, and weight history will be permanently removed.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Yes, delete',
-                  style: 'destructive',
-                  onPress: async () => {
-                    setDeleting(true);
-                    const { error } = await deleteAccount();
-                    setDeleting(false);
-                    if (error) {
-                      Alert.alert('Could not delete account', error);
-                    }
-                  },
-                },
-              ],
-            );
-          },
-        },
-      ],
-    );
+  const runDelete = async () => {
+    setDeleting(true);
+    const { error } = await deleteAccount();
+    setDeleting(false);
+    if (error) {
+      setDialog({ type: 'error', message: error });
+      return;
+    }
+    closeDialog();
   };
 
   if (!profile) {
@@ -149,7 +129,7 @@ export function ProfileScreen() {
             icon="trash-outline"
             title="Delete account"
             subtitle="Permanently remove your account and data"
-            onPress={handleDeleteAccount}
+            onPress={() => setDialog({ type: 'delete' })}
             destructive
             showChevron={false}
             loading={deleting}
@@ -158,12 +138,58 @@ export function ProfileScreen() {
             icon="log-out-outline"
             title="Sign out"
             subtitle="Sign out of your account"
-            onPress={handleSignOut}
+            onPress={() => setDialog({ type: 'signOut' })}
             showChevron={false}
             last
           />
         </View>
       </ScrollView>
+
+      <ConfirmDialog
+        visible={dialog.type === 'signOut'}
+        title="Sign out"
+        message="Sign out of your CALE account?"
+        confirmLabel="Sign out"
+        tone="destructive"
+        onCancel={closeDialog}
+        onConfirm={() => {
+          closeDialog();
+          void signOut();
+        }}
+      />
+
+      <ConfirmDialog
+        visible={dialog.type === 'delete'}
+        title="Delete account"
+        message="This permanently deletes your account and all your data. This cannot be undone."
+        confirmLabel="Continue"
+        tone="destructive"
+        onCancel={closeDialog}
+        onConfirm={() => setDialog({ type: 'deleteConfirm' })}
+      />
+
+      <ConfirmDialog
+        visible={dialog.type === 'deleteConfirm'}
+        title="Are you sure?"
+        message="Your calorie logs, custom foods, and weight history will be permanently removed."
+        confirmLabel="Yes, delete"
+        tone="destructive"
+        loading={deleting}
+        onCancel={closeDialog}
+        onConfirm={() => {
+          void runDelete();
+        }}
+      />
+
+      <ConfirmDialog
+        visible={dialog.type === 'error'}
+        title="Could not delete account"
+        message={dialog.type === 'error' ? dialog.message : ''}
+        confirmLabel="OK"
+        showCancel={false}
+        onCancel={closeDialog}
+        onConfirm={closeDialog}
+      />
     </Screen>
   );
 }
