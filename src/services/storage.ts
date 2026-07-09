@@ -12,6 +12,12 @@ import {
 } from './localStore';
 import { enqueueSync } from './syncQueue';
 
+function scheduleWidgetRefresh() {
+  void import('./widgetSnapshot')
+    .then(mod => mod.refreshHomeWidget())
+    .catch(() => undefined);
+}
+
 export async function getProfile(): Promise<UserProfile | null> {
   return localGetProfile();
 }
@@ -24,6 +30,7 @@ export async function saveProfile(profile: UserProfile): Promise<void> {
     payload: { profile },
     coalesceKey: 'profile',
   });
+  scheduleWidgetRefresh();
 }
 
 export async function getAllLogs(): Promise<Record<string, DailyLog>> {
@@ -60,6 +67,7 @@ export async function saveDailyLog(log: DailyLog): Promise<void> {
       coalesceKey: entry.id,
     });
   }
+  scheduleWidgetRefresh();
 }
 
 export async function addEntry(
@@ -78,6 +86,7 @@ export async function addEntry(
     payload: { date, entry: full },
     coalesceKey: full.id,
   });
+  scheduleWidgetRefresh();
   return full;
 }
 
@@ -109,6 +118,7 @@ export async function updateEntry(
     payload: { date, entry: next },
     coalesceKey: entryId,
   });
+  scheduleWidgetRefresh();
 }
 
 export async function deleteEntry(
@@ -122,6 +132,7 @@ export async function deleteEntry(
     payload: { id: entryId, date },
     coalesceKey: entryId,
   });
+  scheduleWidgetRefresh();
 }
 
 export async function getTodayLog(): Promise<DailyLog> {

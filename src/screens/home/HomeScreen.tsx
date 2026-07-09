@@ -78,6 +78,9 @@ export function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
+      void import('../../services/widgetSnapshot').then(mod =>
+        mod.refreshHomeWidget(),
+      );
     }, [loadData]),
   );
 
@@ -85,6 +88,9 @@ export function HomeScreen() {
     setRefreshing(true);
     await loadData();
     void drainSyncQueue();
+    void import('../../services/widgetSnapshot').then(mod =>
+      mod.refreshHomeWidget(),
+    );
     setRefreshing(false);
   };
 

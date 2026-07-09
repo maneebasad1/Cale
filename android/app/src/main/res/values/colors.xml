@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="splash_background">#F3F2EF</color>
-    <color name="brand_primary">#145C4B</color>
+    <color name="brand_primary">#1A9B78</color>
+    <color name="widget_surface">#FFFFFF</color>
+    <color name="widget_bg">#E0F5EE</color>
+    <color name="widget_bg_over">#F8E8E0</color>
+    <color name="widget_line">#E5E3DE</color>
+    <color name="widget_stone">#8A8680</color>
+    <color name="widget_ink">#1C1B19</color>
+    <color name="widget_chili">#C2512A</color>
+    <color name="widget_saffron_mute">#F8F0D8</color>
 </resources>

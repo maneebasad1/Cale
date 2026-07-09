@@ -4,11 +4,11 @@
  */
 
 export const colors = {
-  /** Brand primary — seaweed / nori */
-  primary: '#145C4B',
-  primaryLight: '#2A7A66',
-  primaryDark: '#0F4639',
-  nori: '#145C4B',
+  /** Brand primary — brighter nori / jade */
+  primary: '#1A9B78',
+  primaryLight: '#2DB892',
+  primaryDark: '#147A5E',
+  nori: '#1A9B78',
 
   /** Accent — spice gold */
   saffron: '#D9A21B',
@@ -36,15 +36,15 @@ export const colors = {
   overMaintenance: '#C2512A',
 
   /** Semantic — on track */
-  success: '#145C4B',
-  underMaintenance: '#145C4B',
+  success: '#1A9B78',
+  underMaintenance: '#1A9B78',
 
   /** Progress mute tints */
-  chipBg: '#E6F0ED',
-  noriMute: '#E6F0ED',
+  chipBg: '#E0F5EE',
+  noriMute: '#E0F5EE',
   saffronMute: '#F8F0D8',
   chiliMute: '#F8E8E0',
-  chipSelected: '#145C4B',
+  chipSelected: '#1A9B78',
 
   /** Near-target progress (~90–100%) */
   nearTarget: '#D9A21B',

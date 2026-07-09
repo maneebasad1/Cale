@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">CALE</string>
+    <string name="widget_description">Today\'s calories left, eaten vs target, and streak</string>
+    <string name="widget_label">CALE Today</string>
 </resources>

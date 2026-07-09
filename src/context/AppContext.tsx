@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { syncDailyReminder } from '../services/notificationService';
 import { getProfile } from '../services/storage';
 import { hydrateFromRemoteIfNeeded } from '../services/sync';
+import { refreshHomeWidget } from '../services/widgetSnapshot';
 import type { UserProfile } from '../types';
 import { useAuth } from './AuthContext';
 
@@ -37,6 +38,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (p?.onboardingComplete) {
       await syncDailyReminder(p);
     }
+    void refreshHomeWidget();
   }, []);
 
   return (

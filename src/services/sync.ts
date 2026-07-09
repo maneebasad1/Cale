@@ -164,6 +164,9 @@ export async function hydrateFromRemoteIfNeeded(): Promise<boolean> {
     await localSaveCustomFoods(foods);
     await localSaveWeightEntries(weights);
     await localSetHydratedUserId(userId);
+    void import('./widgetSnapshot')
+      .then(mod => mod.refreshHomeWidget())
+      .catch(() => undefined);
     return true;
   } catch {
     // Offline or remote error — keep local empty; retry later.
