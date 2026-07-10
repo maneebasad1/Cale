@@ -1,4 +1,4 @@
-package com.caloapp.widget
+package com.cale.widget
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule

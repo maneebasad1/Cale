@@ -1,4 +1,4 @@
-package com.caloapp.widget
+package com.cale.widget
 
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName

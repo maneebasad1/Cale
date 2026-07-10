@@ -1,4 +1,4 @@
-package com.caloapp.widget
+package com.cale.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -9,8 +9,8 @@ import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
-import com.caloapp.MainActivity
-import com.caloapp.R
+import com.cale.MainActivity
+import com.cale.R
 
 class CaleHomeWidgetProvider : AppWidgetProvider() {
   override fun onUpdate(

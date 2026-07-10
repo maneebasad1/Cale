@@ -33,7 +33,7 @@ Copy the **Client ID** → `GOOGLE_IOS_CLIENT_ID` in `src/config/supabase.ts`
 
 ### C) Android (for Android app)
 - **Application type:** Android
-- **Package name:** `com.caloapp`
+- **Package name:** `com.cale`
 - **SHA-1 certificate fingerprint:** get debug SHA-1:
   ```bash
   keytool -list -v -keystore android/app/debug.keystore -alias androiddebugkey -storepass android -keypass android

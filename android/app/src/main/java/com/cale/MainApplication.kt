@@ -1,6 +1,7 @@
-package com.caloapp
+package com.cale
 
 import android.app.Application
+import com.cale.widget.WidgetBridgePackage
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -14,7 +15,7 @@ class MainApplication : Application(), ReactApplication {
       context = applicationContext,
       packageList =
         PackageList(this).packages.apply {
-          add(com.caloapp.widget.WidgetBridgePackage())
+          add(WidgetBridgePackage())
         },
     )
   }
