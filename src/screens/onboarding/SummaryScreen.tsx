@@ -30,6 +30,7 @@ export function SummaryScreen({ route }: Props) {
     goalWeightKg,
     calorieAdjustment,
     dailyTargetCalories,
+    adjustmentIsCustom,
     weightUnit,
     heightUnit,
   } = route.params;
@@ -55,6 +56,7 @@ export function SummaryScreen({ route }: Props) {
       goalWeightKg,
       calorieAdjustment,
       dailyTargetCalories,
+      adjustmentIsCustom,
       weightUnit,
       heightUnit,
       onboardingComplete: true,

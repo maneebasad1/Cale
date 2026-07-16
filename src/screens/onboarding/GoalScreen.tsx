@@ -1,7 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Icon } from '../../components/Icon';
+import {
+  CalorieAdjustmentField,
+  isCalorieAdjustmentValid,
+} from '../../components/CalorieAdjustmentField';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { LabeledInput } from '../../components/LabeledInput';
 import { FormSection } from '../../components/onboarding/FormSection';
@@ -9,15 +12,14 @@ import { OnboardingFooter } from '../../components/onboarding/OnboardingFooter';
 import { OnboardingHeader } from '../../components/onboarding/OnboardingHeader';
 import { SelectionCard } from '../../components/onboarding/SelectionCard';
 import { Screen } from '../../components/Screen';
-import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
+import { colors, spacing, typography } from '../../constants/theme';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import type { GoalType } from '../../types';
 import { GOAL_OPTIONS } from '../../types';
 import {
-  calculateCalorieAdjustment,
-  calculateDailyTarget,
-  estimateWeeklyWeightChange,
-} from '../../utils/bmr';
+  autoAdjustmentMagnitude,
+  resolveAdjustmentPreview,
+} from '../../utils/weightTimeline';
 import { displayWeight, kgToLb, lbToKg } from '../../utils/units';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Goal'>;
@@ -32,6 +34,8 @@ export function GoalScreen({ route, navigation }: Props) {
 
   const [goalType, setGoalType] = useState<GoalType | null>(null);
   const [goalWeight, setGoalWeight] = useState('');
+  const [adjustmentInput, setAdjustmentInput] = useState('');
+  const [adjustmentIsCustom, setAdjustmentIsCustom] = useState(false);
 
   const goalWeightKg = useMemo(() => {
     const num = parseFloat(goalWeight);
@@ -41,35 +45,77 @@ export function GoalScreen({ route, navigation }: Props) {
     return weightUnit === 'kg' ? num : lbToKg(num);
   }, [goalWeight, weightUnit]);
 
+  const autoMagnitude = useMemo(() => {
+    if (!goalType || goalType === 'maintain' || !goalWeightKg) {
+      return 0;
+    }
+    return autoAdjustmentMagnitude(goalType, weightKg, goalWeightKg);
+  }, [goalType, goalWeightKg, weightKg]);
+
+  useEffect(() => {
+    if (!goalType || goalType === 'maintain' || adjustmentIsCustom) {
+      return;
+    }
+    if (autoMagnitude > 0) {
+      setAdjustmentInput(String(autoMagnitude));
+    }
+  }, [goalType, autoMagnitude, adjustmentIsCustom]);
+
   const preview = useMemo(() => {
-    if (!goalType || !goalWeightKg) {
+    if (
+      !goalType ||
+      goalType === 'maintain' ||
+      !goalWeightKg ||
+      !isCalorieAdjustmentValid(
+        goalType,
+        adjustmentInput,
+        maintenanceCalories,
+        gender,
+      )
+    ) {
       return null;
     }
 
-    const adjustment = calculateCalorieAdjustment(
+    const magnitude = Math.abs(parseFloat(adjustmentInput) || 0);
+    return resolveAdjustmentPreview({
       goalType,
-      weightKg,
-      goalWeightKg,
-    );
-    const dailyTarget = calculateDailyTarget(
+      magnitude,
       maintenanceCalories,
-      adjustment,
       gender,
-      goalType,
-    );
-    const weeklyChange = estimateWeeklyWeightChange(adjustment);
-
-    return { adjustment, dailyTarget, weeklyChange };
-  }, [goalType, goalWeightKg, weightKg, maintenanceCalories, gender]);
+      currentWeightKg: weightKg,
+      goalWeightKg,
+      weightUnit,
+    });
+  }, [
+    goalType,
+    goalWeightKg,
+    adjustmentInput,
+    maintenanceCalories,
+    gender,
+    weightKg,
+    weightUnit,
+  ]);
 
   const isValid = () => {
     if (!goalType || !goalWeightKg) {
       return false;
     }
-    if (goalType === 'lose') {
-      return goalWeightKg < weightKg;
+    if (goalType === 'maintain') {
+      return true;
     }
-    return goalWeightKg > weightKg;
+    if (goalType === 'lose') {
+      if (goalWeightKg >= weightKg) {
+        return false;
+      }
+    } else if (goalWeightKg <= weightKg) {
+      return false;
+    }
+    return isCalorieAdjustmentValid(
+      goalType,
+      adjustmentInput,
+      maintenanceCalories,
+      gender,
+    );
   };
 
   const validationHint = () => {
@@ -94,8 +140,9 @@ export function GoalScreen({ route, navigation }: Props) {
       ...route.params,
       goalType,
       goalWeightKg,
-      calorieAdjustment: preview.adjustment,
-      dailyTargetCalories: preview.dailyTarget,
+      calorieAdjustment: preview.calorieAdjustment,
+      dailyTargetCalories: preview.dailyTargetCalories,
+      adjustmentIsCustom,
     });
   };
 
@@ -106,7 +153,18 @@ export function GoalScreen({ route, navigation }: Props) {
       goalWeightKg: weightKg,
       calorieAdjustment: 0,
       dailyTargetCalories: maintenanceCalories,
+      adjustmentIsCustom: false,
     });
+  };
+
+  const handleGoalTypeSelect = (nextGoalType: GoalType) => {
+    setGoalType(nextGoalType);
+    setAdjustmentIsCustom(false);
+  };
+
+  const handleAdjustmentChange = (text: string) => {
+    setAdjustmentInput(text);
+    setAdjustmentIsCustom(true);
   };
 
   const defaultPlaceholder =
@@ -132,82 +190,63 @@ export function GoalScreen({ route, navigation }: Props) {
         <OnboardingHeader
           step={4}
           title="What's your goal?"
-          subtitle="Choose lose or gain, then set a target weight."
+          subtitle="Choose lose or gain, then set a target weight and daily pace."
         />
 
         <View style={styles.goalOptions}>
-            {GOAL_OPTIONS.filter(option => option.value !== 'maintain').map(
-              option => (
+          {GOAL_OPTIONS.filter(option => option.value !== 'maintain').map(
+            option => (
               <SelectionCard
                 key={option.value}
                 label={option.label}
                 description={option.description}
                 selected={goalType === option.value}
-                onPress={() => setGoalType(option.value)}
+                onPress={() => handleGoalTypeSelect(option.value)}
                 icon={option.icon}
               />
             ),
+          )}
+        </View>
+
+        <SelectionCard
+          label="Just show my maintenance calories"
+          description="Skip — I don't have a specific goal right now"
+          selected={goalType === 'maintain'}
+          onPress={handleSkipToMaintain}
+          icon="checkmark-circle"
+        />
+
+        {goalType && goalType !== 'maintain' && (
+          <FormSection title="Goal weight">
+            <Text style={styles.currentWeight}>
+              Current: {displayWeight(weightKg, weightUnit)}
+            </Text>
+            <LabeledInput
+              label=""
+              value={goalWeight}
+              onChangeText={setGoalWeight}
+              placeholder={defaultPlaceholder}
+              keyboardType="numeric"
+              suffix={weightUnit}
+            />
+            {validationHint() && (
+              <Text style={styles.error}>{validationHint()}</Text>
             )}
-          </View>
+          </FormSection>
+        )}
 
-          <SelectionCard
-            label="Just show my maintenance calories"
-            description="Skip — I don't have a specific goal right now"
-            selected={goalType === 'maintain'}
-            onPress={handleSkipToMaintain}
-            icon="checkmark-circle"
+        {goalType && goalType !== 'maintain' && goalWeightKg > 0 && (
+          <CalorieAdjustmentField
+            goalType={goalType}
+            gender={gender}
+            maintenanceCalories={maintenanceCalories}
+            currentWeightKg={weightKg}
+            goalWeightKg={goalWeightKg}
+            weightUnit={weightUnit}
+            value={adjustmentInput}
+            onChangeText={handleAdjustmentChange}
           />
-
-          {goalType && (
-            <FormSection title="Goal weight">
-              <Text style={styles.currentWeight}>
-                Current: {displayWeight(weightKg, weightUnit)}
-              </Text>
-              <LabeledInput
-                label=""
-                value={goalWeight}
-                onChangeText={setGoalWeight}
-                placeholder={defaultPlaceholder}
-                keyboardType="numeric"
-                suffix={weightUnit}
-              />
-              {validationHint() && (
-                <Text style={styles.error}>{validationHint()}</Text>
-              )}
-            </FormSection>
-          )}
-
-          {preview && isValid() && (
-            <View style={styles.previewCard}>
-              <View style={styles.previewRow}>
-                <Icon
-                  name={goalType === 'lose' ? 'arrow-down' : 'arrow-up'}
-                  size={20}
-                  color={goalType === 'lose' ? colors.warning : colors.primary}
-                />
-                <Text style={styles.previewLabel}>
-                  Daily {goalType === 'lose' ? 'deficit' : 'surplus'}
-                </Text>
-              </View>
-              <Text style={styles.previewAdjustment}>
-                {Math.abs(preview.adjustment).toLocaleString()} kcal
-              </Text>
-
-              <View style={styles.previewDivider} />
-
-              <Text style={styles.previewTargetLabel}>Your daily target</Text>
-              <Text style={styles.previewTarget}>
-                {preview.dailyTarget.toLocaleString()} kcal/day
-              </Text>
-              <Text style={styles.previewMaintenance}>
-                Maintenance: {maintenanceCalories.toLocaleString()} kcal
-              </Text>
-
-              <Text style={styles.previewEstimate}>
-                Estimated ~{preview.weeklyChange} kg per week toward your goal
-              </Text>
-            </View>
-          )}
+        )}
       </KeyboardAwareScreen>
     </Screen>
   );
@@ -231,54 +270,5 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.error,
     marginTop: spacing.xs,
-  },
-  previewCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    marginTop: spacing.sm,
-  },
-  previewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  previewLabel: {
-    ...typography.overline,
-    color: colors.textSecondary,
-  },
-  previewAdjustment: {
-    fontFamily: fonts.displayBold,
-    fontSize: 28,
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  previewDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-    marginBottom: spacing.md,
-  },
-  previewTargetLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  previewTarget: {
-    fontFamily: fonts.displayBold,
-    fontSize: 36,
-    color: colors.primary,
-    marginBottom: spacing.xs,
-  },
-  previewMaintenance: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
-  },
-  previewEstimate: {
-    ...typography.caption,
-    color: colors.primaryDark,
   },
 });

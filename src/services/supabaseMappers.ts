@@ -16,6 +16,7 @@ export interface ProfileRow {
   goal_weight_kg: number;
   calorie_adjustment: number;
   daily_target_calories: number;
+  adjustment_is_custom: boolean | null;
   weight_unit: UserProfile['weightUnit'];
   height_unit: UserProfile['heightUnit'];
   onboarding_complete: boolean;
@@ -67,6 +68,7 @@ export function profileFromRow(row: ProfileRow): UserProfile {
     goalWeightKg: row.goal_weight_kg,
     calorieAdjustment: row.calorie_adjustment,
     dailyTargetCalories: row.daily_target_calories,
+    adjustmentIsCustom: row.adjustment_is_custom ?? undefined,
     weightUnit: row.weight_unit,
     heightUnit: row.height_unit,
     onboardingComplete: row.onboarding_complete,
@@ -96,6 +98,7 @@ export function profileToRow(userId: string, profile: UserProfile): ProfileRow {
     goal_weight_kg: profile.goalWeightKg,
     calorie_adjustment: profile.calorieAdjustment,
     daily_target_calories: profile.dailyTargetCalories,
+    adjustment_is_custom: profile.adjustmentIsCustom ?? false,
     weight_unit: profile.weightUnit,
     height_unit: profile.heightUnit,
     onboarding_complete: profile.onboardingComplete,

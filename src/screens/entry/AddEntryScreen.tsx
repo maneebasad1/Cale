@@ -8,6 +8,7 @@ import { OnboardingFooter } from '../../components/onboarding/OnboardingFooter';
 import { FoodSearchList } from '../../components/FoodSearchList';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { MealChipSelector } from '../../components/MealChipSelector';
+import { LabeledInput } from '../../components/LabeledInput';
 import { QuickCalorieChips } from '../../components/QuickCalorieChips';
 import { Screen } from '../../components/Screen';
 import { UnitToggle } from '../../components/UnitToggle';
@@ -53,6 +54,7 @@ export function AddEntryScreen() {
   const [mealType, setMealType] = useState<MealType>('breakfast');
   const [entryMode, setEntryMode] = useState<EntryMode>('food');
   const [calories, setCalories] = useState('');
+  const [customName, setCustomName] = useState('');
   const [selectedFoods, setSelectedFoods] = useState<FoodItem[]>([]);
   const [loaded, setLoaded] = useState(!entryId);
 
@@ -116,9 +118,13 @@ export function AddEntryScreen() {
 
       setMealType(entry.mealType);
       setCalories(String(entry.calories));
-      setEntryMode(entry.entryMode ?? (entry.foodName ? 'food' : 'custom'));
+      const mode =
+        entry.entryMode ?? (entry.foodName ? 'food' : 'custom');
+      setEntryMode(mode);
 
-      if (entry.foodId) {
+      if (mode === 'custom') {
+        setCustomName(entry.foodName ?? '');
+      } else if (entry.foodId) {
         const resolved = await resolveFoodById(entry.foodId);
         setSelectedFoods([
           resolved ?? foodFromEntry(entry),
@@ -151,6 +157,7 @@ export function AddEntryScreen() {
       setSelectedFoods([]);
       if (!isEditing) {
         setCalories('');
+        setCustomName('');
       }
     } else if (selectedFoods.length === 0) {
       setCalories('');
@@ -178,6 +185,7 @@ export function AddEntryScreen() {
         mealType,
         calories: num,
         entryMode: 'custom' as const,
+        foodName: customName.trim() || undefined,
       };
       if (entryId) {
         await updateEntry(date, entryId, payload);
@@ -239,6 +247,7 @@ export function AddEntryScreen() {
     navigation.goBack();
   }, [
     calories,
+    customName,
     date,
     entryId,
     entryMode,
@@ -327,6 +336,14 @@ export function AddEntryScreen() {
                 : 'Calories (adjust if needed)'
               : 'Calories'
           }>
+          {entryMode === 'custom' && (
+            <LabeledInput
+              label="Name (optional)"
+              value={customName}
+              onChangeText={setCustomName}
+              placeholder="What did you eat? (optional)"
+            />
+          )}
           {entryMode === 'custom' && (
             <QuickCalorieChips onAdd={handleQuickAddCalories} />
           )}

@@ -135,6 +135,7 @@ grant execute on function public.delete_own_account() to authenticated;
 
 -- If you already deployed an older schema, run:
 -- alter table public.profiles add column if not exists meal_reminders jsonb;
+-- alter table public.profiles add column if not exists adjustment_is_custom boolean not null default false;
 
 -- ---------------------------------------------------------------------------
 -- Local-first sync notes (app writes AsyncStorage first, then upserts here):

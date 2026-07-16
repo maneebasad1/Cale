@@ -35,6 +35,7 @@ export type OnboardingStackParamList = {
     goalWeightKg: number;
     calorieAdjustment: number;
     dailyTargetCalories: number;
+    adjustmentIsCustom?: boolean;
     weightUnit: import('../types').WeightUnit;
     heightUnit: import('../types').HeightUnit;
   };

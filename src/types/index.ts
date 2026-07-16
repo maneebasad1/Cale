@@ -63,6 +63,8 @@ export interface UserProfile {
   goalWeightKg: number;
   calorieAdjustment: number;
   dailyTargetCalories: number;
+  /** When true, calorieAdjustment is user-set and not auto-recalculated on weight changes. */
+  adjustmentIsCustom?: boolean;
   weightUnit: WeightUnit;
   heightUnit: HeightUnit;
   onboardingComplete: boolean;

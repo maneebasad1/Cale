@@ -24,6 +24,10 @@ import type {
 import { ACTIVITY_LEVELS } from '../../types';
 import { buildUpdatedProfile } from '../../utils/profileSave';
 import {
+  promptCustomAdjustmentUpdate,
+  shouldPromptCustomAdjustmentUpdate,
+} from '../../utils/profileAdjustmentPrompt';
+import {
   cmToFeetInches,
   feetInchesToCm,
   kgToLb,
@@ -100,21 +104,34 @@ export function ProfileBodyScreen() {
 
     const weightKg = weightUnit === 'kg' ? weightNum : lbToKg(weightNum);
 
-    const updated = buildUpdatedProfile(profile, {
-      weightKg,
-      heightCm,
-      age: ageNum,
-      gender,
-      activityLevel,
-      weightUnit,
-      heightUnit,
-    });
-    await saveProfile(updated);
-    setProfile(updated);
-    Alert.alert(
-      'Settings saved',
-      `Your daily target is now ${updated.dailyTargetCalories.toLocaleString()} kcal/day.`,
-    );
+    const applySave = async (useAutoAdjustment: boolean) => {
+      const updates = {
+        weightKg,
+        heightCm,
+        age: ageNum,
+        gender,
+        activityLevel,
+        weightUnit,
+        heightUnit,
+        ...(useAutoAdjustment ? { adjustmentIsCustom: false } : {}),
+      };
+      const updated = buildUpdatedProfile(profile, updates);
+      await saveProfile(updated);
+      setProfile(updated);
+      Alert.alert(
+        'Settings saved',
+        `Your daily target is now ${updated.dailyTargetCalories.toLocaleString()} kcal/day.`,
+      );
+    };
+
+    if (shouldPromptCustomAdjustmentUpdate(profile, { weightKg })) {
+      promptCustomAdjustmentUpdate(profile, { weightKg }, useAuto =>
+        applySave(useAuto),
+      );
+      return;
+    }
+
+    await applySave(false);
   };
 
   if (!profile) {

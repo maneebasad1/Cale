@@ -22,6 +22,10 @@ import {
 import type { WeightEntry } from '../../types/weight';
 import { displayWeight, lbToKg } from '../../utils/units';
 import { buildUpdatedProfile } from '../../utils/profileSave';
+import {
+  promptCustomAdjustmentUpdate,
+  shouldPromptCustomAdjustmentUpdate,
+} from '../../utils/profileAdjustmentPrompt';
 
 export function ProfileWeightScreen() {
   const [weightUnit, setWeightUnit] = useState<'kg' | 'lb'>('kg');
@@ -55,8 +59,21 @@ export function ProfileWeightScreen() {
     await addWeightEntry(weightKg);
     const profile = await getProfile();
     if (profile) {
-      const updated = buildUpdatedProfile(profile, { weightKg });
-      await saveProfile(updated);
+      const applySave = async (useAutoAdjustment: boolean) => {
+        const updated = buildUpdatedProfile(profile, {
+          weightKg,
+          ...(useAutoAdjustment ? { adjustmentIsCustom: false } : {}),
+        });
+        await saveProfile(updated);
+      };
+
+      if (shouldPromptCustomAdjustmentUpdate(profile, { weightKg })) {
+        promptCustomAdjustmentUpdate(profile, { weightKg }, useAuto =>
+          applySave(useAuto),
+        );
+      } else {
+        await applySave(false);
+      }
     }
     setNewWeight('');
     await loadData();
