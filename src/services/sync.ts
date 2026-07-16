@@ -19,7 +19,9 @@ import {
   localSetHydratedUserId,
   resetLocalEntityStore,
 } from './localStore';
+import { getCachedAuthUser } from './authCache';
 import * as db from './supabaseData';
+import { withTimeout } from '../utils/networkTimeout';
 import {
   SYNC_MAX_RETRIES,
   backoffSeconds,
@@ -42,6 +44,16 @@ export interface SyncStatusSnapshot {
 type StatusListener = (snapshot: SyncStatusSnapshot) => void;
 
 const PERIODIC_MS = 45_000;
+const HYDRATE_FETCH_TIMEOUT_MS = 8_000;
+
+async function resolveLocalUserId(): Promise<string | null> {
+  const sessionUserId = await db.tryGetSessionUserId();
+  if (sessionUserId) {
+    return sessionUserId;
+  }
+  const cached = await getCachedAuthUser();
+  return cached?.id ?? null;
+}
 
 let draining = false;
 let started = false;
@@ -135,7 +147,7 @@ async function processItem(item: SyncQueueItem): Promise<void> {
  * Clears leftover data from a previous account before hydrating.
  */
 export async function hydrateFromRemoteIfNeeded(): Promise<boolean> {
-  const userId = await db.tryGetUserId();
+  const userId = await resolveLocalUserId();
   if (!userId) {
     return false;
   }
@@ -156,12 +168,16 @@ export async function hydrateFromRemoteIfNeeded(): Promise<boolean> {
   }
 
   try {
-    const [profile, logs, foods, weights] = await Promise.all([
-      db.fetchProfile(),
-      db.fetchAllLogs(),
-      db.fetchCustomFoods(),
-      db.fetchWeightEntries(),
-    ]);
+    const [profile, logs, foods, weights] = await withTimeout(
+      Promise.all([
+        db.fetchProfile(),
+        db.fetchAllLogs(),
+        db.fetchCustomFoods(),
+        db.fetchWeightEntries(),
+      ]),
+      HYDRATE_FETCH_TIMEOUT_MS,
+      'Remote hydration timed out',
+    );
     if (profile) {
       await localSaveProfile(profile);
     }
@@ -192,7 +208,7 @@ export async function drainSyncQueue(): Promise<void> {
     return;
   }
 
-  const userId = await db.tryGetUserId();
+  const userId = await resolveLocalUserId();
   if (!userId) {
     await refreshSyncStatus();
     return;

@@ -4,13 +4,24 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
-import type { Session, User } from '@supabase/supabase-js';
+import { AppState, type AppStateStatus } from 'react-native';
+import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { isSupabaseConfigured } from '../config/supabase';
 import { getSupabase } from '../lib/supabase';
+import {
+  cachedAuthUserToUser,
+  clearCachedAuthUser,
+  getCachedAuthUser,
+  saveCachedAuthUser,
+} from '../services/authCache';
 import { signInWithGoogleNative, signOutGoogle } from '../services/googleAuth';
-import { resetLocalEntityStore } from '../services/localStore';
+import { localIsEmpty, resetLocalEntityStore } from '../services/localStore';
+import { withTimeout } from '../utils/networkTimeout';
+
+const SESSION_INIT_TIMEOUT_MS = 4_000;
 
 interface AuthContextValue {
   session: Session | null;
@@ -34,9 +45,26 @@ const AuthContext = createContext<AuthContextValue>({
   signOut: async () => {},
 });
 
+async function getSessionWithTimeout(): Promise<Session | null> {
+  try {
+    return await withTimeout(
+      getSupabase()
+        .auth.getSession()
+        .then(({ data }) => data.session),
+      SESSION_INIT_TIMEOUT_MS,
+      'Session init timed out',
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [offlineUser, setOfflineUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const explicitSignOutRef = useRef(false);
+  const lastUserIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
@@ -45,36 +73,101 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const supabase = getSupabase();
-    let lastUserId: string | null | undefined;
 
-    const applySession = async (nextSession: Session | null) => {
-      const nextUserId = nextSession?.user?.id ?? null;
-      // Wipe local cache whenever the signed-in user changes (including first
-      // login after another account left data behind).
-      if (
-        lastUserId !== undefined &&
-        lastUserId !== nextUserId &&
-        (lastUserId !== null || nextUserId !== null)
-      ) {
-        await resetLocalEntityStore();
+    const restoreOfflineUser = async (): Promise<boolean> => {
+      const cached = await getCachedAuthUser();
+      if (!cached) {
+        return false;
       }
-      lastUserId = nextUserId;
-      setSession(nextSession);
+      const empty = await localIsEmpty();
+      if (empty) {
+        return false;
+      }
+      lastUserIdRef.current = cached.id;
+      setOfflineUser(cachedAuthUserToUser(cached));
+      setAuthLoading(false);
+      return true;
+    };
+
+    const applySession = async (
+      event: AuthChangeEvent,
+      nextSession: Session | null,
+    ) => {
+      const nextUserId = nextSession?.user?.id ?? null;
+
+      if (nextSession?.user) {
+        const signedInUserId = nextSession.user.id;
+        if (
+          lastUserIdRef.current !== undefined &&
+          lastUserIdRef.current !== null &&
+          lastUserIdRef.current !== signedInUserId
+        ) {
+          await resetLocalEntityStore();
+        }
+        lastUserIdRef.current = signedInUserId;
+        await saveCachedAuthUser({
+          id: signedInUserId,
+          email: nextSession.user.email,
+        });
+        setOfflineUser(null);
+        setSession(nextSession);
+        setAuthLoading(false);
+        return;
+      }
+
+      if (explicitSignOutRef.current) {
+        explicitSignOutRef.current = false;
+        lastUserIdRef.current = null;
+        await clearCachedAuthUser();
+        setOfflineUser(null);
+        setSession(null);
+        setAuthLoading(false);
+        return;
+      }
+
+      // Token refresh failed offline — keep the user signed in locally.
+      if (event === 'SIGNED_OUT' && lastUserIdRef.current) {
+        setAuthLoading(false);
+        return;
+      }
+
+      if (await restoreOfflineUser()) {
+        return;
+      }
+
+      lastUserIdRef.current = null;
+      setOfflineUser(null);
+      setSession(null);
       setAuthLoading(false);
     };
 
-    supabase.auth.getSession().then(({ data }) => {
-      void applySession(data.session);
-    });
+    void (async () => {
+      const initialSession = await getSessionWithTimeout();
+      await applySession('INITIAL_SESSION', initialSession);
+    })();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        void applySession(nextSession);
+      (event, nextSession) => {
+        void applySession(event, nextSession);
       },
     );
 
+    supabase.auth.startAutoRefresh();
+
+    const onAppStateChange = (state: AppStateStatus) => {
+      if (state === 'active') {
+        supabase.auth.startAutoRefresh();
+      } else {
+        supabase.auth.stopAutoRefresh();
+      }
+    };
+
+    const appStateSub = AppState.addEventListener('change', onAppStateChange);
+
     return () => {
       listener.subscription.unsubscribe();
+      supabase.auth.stopAutoRefresh();
+      appStateSub.remove();
     };
   }, []);
 
@@ -99,24 +192,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    explicitSignOutRef.current = true;
     await signOutGoogle();
     await getSupabase().auth.signOut();
+    await clearCachedAuthUser();
     await resetLocalEntityStore();
+    lastUserIdRef.current = null;
+    setOfflineUser(null);
     setSession(null);
   }, []);
+
+  const user = session?.user ?? offlineUser;
+  const isAuthenticated = Boolean(user);
 
   const value = useMemo(
     () => ({
       session,
-      user: session?.user ?? null,
-      isAuthenticated: Boolean(session?.user),
+      user,
+      isAuthenticated,
       authLoading,
       signIn,
       signUp,
       signInWithGoogle,
       signOut,
     }),
-    [authLoading, session, signIn, signInWithGoogle, signOut, signUp],
+    [authLoading, isAuthenticated, session, signIn, signInWithGoogle, signOut, signUp, user],
   );
 
   return (

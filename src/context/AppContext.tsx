@@ -31,14 +31,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated]);
 
   const refreshProfile = useCallback(async () => {
-    await hydrateFromRemoteIfNeeded();
-    const p = await getProfile();
-    setProfile(p);
-    setOnboardingComplete(p?.onboardingComplete ?? false);
-    if (p?.onboardingComplete) {
-      await syncDailyReminder(p);
-    }
-    void refreshHomeWidget();
+    const localProfile = await getProfile();
+    setProfile(localProfile);
+    setOnboardingComplete(localProfile?.onboardingComplete ?? false);
+
+    void (async () => {
+      const hydrated = await hydrateFromRemoteIfNeeded();
+      if (hydrated) {
+        const remoteProfile = await getProfile();
+        setProfile(remoteProfile);
+        setOnboardingComplete(remoteProfile?.onboardingComplete ?? false);
+      }
+
+      const profileForReminder = hydrated
+        ? await getProfile()
+        : localProfile;
+      if (profileForReminder?.onboardingComplete) {
+        await syncDailyReminder(profileForReminder);
+      }
+      void refreshHomeWidget();
+    })();
   }, []);
 
   return (

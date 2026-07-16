@@ -30,11 +30,13 @@ export function RootNavigator() {
     }
 
     let cancelled = false;
-    refreshProfile().finally(() => {
+
+    void (async () => {
+      await refreshProfile();
       if (!cancelled) {
         setBootstrappedUserId(user.id);
       }
-    });
+    })();
 
     return () => {
       cancelled = true;

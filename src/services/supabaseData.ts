@@ -14,7 +14,20 @@ import {
   weightFromRow,
 } from './supabaseMappers';
 
+/** Local session read — no network round-trip. Prefer for identity checks. */
+export async function tryGetSessionUserId(): Promise<string | null> {
+  const {
+    data: { session },
+  } = await getSupabase().auth.getSession();
+  return session?.user?.id ?? null;
+}
+
 async function getUserId(): Promise<string> {
+  const sessionUserId = await tryGetSessionUserId();
+  if (sessionUserId) {
+    return sessionUserId;
+  }
+
   const { data, error } = await getSupabase().auth.getUser();
   if (error || !data.user) {
     throw new Error('Not authenticated');

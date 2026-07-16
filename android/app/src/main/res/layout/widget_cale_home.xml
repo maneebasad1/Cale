@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
     android:orientation="vertical"
-    android:padding="14dp">
+    android:padding="10dp">
 
     <!-- Header: brand + date -->
     <LinearLayout
@@ -41,23 +41,22 @@
             android:textSize="12sp" />
     </LinearLayout>
 
-    <!-- Main row: hero left + side panel right (wide/short) -->
+    <!-- Main row: hero (left / top) + optional side panel (wide strip only) -->
     <LinearLayout
         android:id="@+id/widget_main_row"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="6dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="start|center_vertical"
         android:orientation="horizontal">
 
-        <!-- Left: calorie total -->
+        <!-- Hero: calorie total + "kcal left" -->
         <LinearLayout
             android:id="@+id/widget_hero_block"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:gravity="center_vertical"
+            android:gravity="start|center_vertical"
             android:orientation="horizontal">
 
             <ImageView
@@ -72,12 +71,14 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:gravity="start"
                 android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/widget_hero"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:gravity="start"
                     android:maxLines="1"
                     android:text="—"
                     android:textColor="@color/brand_primary"
@@ -88,6 +89,7 @@
                     android:id="@+id/widget_hero_sub"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:gravity="start"
                     android:text="kcal left"
                     android:textColor="@color/brand_primary"
                     android:textSize="12sp"
@@ -95,15 +97,16 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Right side panel: eaten / target / streak (wide + short) -->
+        <!-- Side panel: only for wide + short strip layout -->
         <LinearLayout
             android:id="@+id/widget_side_panel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
+            android:layout_gravity="end|center_vertical"
+            android:layout_marginStart="8dp"
             android:background="@drawable/widget_side_panel"
             android:gravity="end"
-            android:minWidth="120dp"
+            android:minWidth="88dp"
             android:orientation="vertical"
             android:paddingLeft="12dp"
             android:paddingTop="8dp"

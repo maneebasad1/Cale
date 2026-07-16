@@ -33,6 +33,46 @@ class CaleHomeWidgetProvider : AppWidgetProvider() {
   }
 
   companion object {
+    private fun applyTypography(views: RemoteViews, type: WidgetTypography) {
+      views.setTextViewTextSize(R.id.widget_brand, TypedValue.COMPLEX_UNIT_SP, type.brand)
+      views.setTextViewTextSize(R.id.widget_date, TypedValue.COMPLEX_UNIT_SP, type.date)
+      views.setTextViewTextSize(R.id.widget_hero, TypedValue.COMPLEX_UNIT_SP, type.hero)
+      views.setTextViewTextSize(R.id.widget_hero_sub, TypedValue.COMPLEX_UNIT_SP, type.heroSub)
+      views.setTextViewTextSize(R.id.widget_eaten, TypedValue.COMPLEX_UNIT_SP, type.meta)
+      views.setTextViewTextSize(R.id.widget_target, TypedValue.COMPLEX_UNIT_SP, type.meta)
+      views.setTextViewTextSize(R.id.widget_streak, TypedValue.COMPLEX_UNIT_SP, type.streak)
+      views.setTextViewTextSize(R.id.widget_side_eaten, TypedValue.COMPLEX_UNIT_SP, type.meta)
+      views.setTextViewTextSize(R.id.widget_side_target, TypedValue.COMPLEX_UNIT_SP, type.meta)
+      views.setTextViewTextSize(R.id.widget_side_streak, TypedValue.COMPLEX_UNIT_SP, type.streak)
+
+      views.setViewVisibility(
+        R.id.widget_brand_icon,
+        if (type.showHeader && type.showHeroIcon) View.VISIBLE else View.GONE,
+      )
+      views.setViewVisibility(R.id.widget_brand, if (type.showHeader) View.VISIBLE else View.GONE)
+      views.setViewVisibility(R.id.widget_date, if (type.showHeader) View.VISIBLE else View.GONE)
+      views.setViewVisibility(
+        R.id.widget_hero_icon,
+        if (type.showHeroIcon) View.VISIBLE else View.GONE,
+      )
+      views.setViewVisibility(
+        R.id.widget_hero_sub,
+        if (type.showHeroSub) View.VISIBLE else View.GONE,
+      )
+      views.setViewVisibility(
+        R.id.widget_eaten_icon,
+        if (type.showMetaIcons) View.VISIBLE else View.GONE,
+      )
+      views.setViewVisibility(
+        R.id.widget_target_icon,
+        if (type.showMetaIcons) View.VISIBLE else View.GONE,
+      )
+      views.setViewVisibility(
+        R.id.widget_streak_icon,
+        if (type.showMetaIcons) View.VISIBLE else View.GONE,
+      )
+    }
+
     fun updateAppWidget(
       context: Context,
       appWidgetManager: AppWidgetManager,
@@ -56,22 +96,17 @@ class CaleHomeWidgetProvider : AppWidgetProvider() {
         prefs.getString(WidgetBridgeModule.KEY_DATE, "Today") ?: "Today"
 
       val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
-      val minHeight =
-        options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110)
-      val minWidth =
-        options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)
-
-      // Wide + short: side panel beside calorie total.
-      val isWideShort = minHeight < 110 && minWidth >= 200
-      // Tall enough for stacked meta under the hero.
-      val isTall = minHeight >= 110
-      val isTiny = minWidth < 160 && minHeight < 90
+      val (widthDp, heightDp) = WidgetLayout.currentSizeDp(options)
+      val mode = WidgetLayout.layoutMode(widthDp, heightDp)
+      val typography = WidgetLayout.typography(widthDp, heightDp, mode)
 
       val views = RemoteViews(context.packageName, R.layout.widget_cale_home)
       val accent =
         context.getColor(
           if (isOver && ready) R.color.widget_chili else R.color.brand_primary,
         )
+
+      applyTypography(views, typography)
 
       views.setInt(
         R.id.widget_root,
@@ -80,16 +115,6 @@ class CaleHomeWidgetProvider : AppWidgetProvider() {
           R.drawable.widget_background_over
         } else {
           R.drawable.widget_background
-        },
-      )
-
-      views.setTextViewTextSize(
-        R.id.widget_hero,
-        TypedValue.COMPLEX_UNIT_SP,
-        when {
-          isTiny -> 22f
-          isWideShort -> 26f
-          else -> 32f
         },
       )
 
@@ -110,6 +135,10 @@ class CaleHomeWidgetProvider : AppWidgetProvider() {
         views.setTextViewText(R.id.widget_hero_sub, heroSub)
         views.setTextColor(R.id.widget_hero, accent)
         views.setTextColor(R.id.widget_hero_sub, accent)
+        views.setViewVisibility(
+          R.id.widget_hero_sub,
+          if (mode.isTiny) View.GONE else View.VISIBLE,
+        )
         views.setImageViewResource(
           R.id.widget_hero_icon,
           if (isOver) R.drawable.ic_widget_flag else R.drawable.ic_widget_bowl,
@@ -124,27 +153,28 @@ class CaleHomeWidgetProvider : AppWidgetProvider() {
         views.setTextViewText(R.id.widget_streak, streak)
         views.setTextViewText(R.id.widget_side_streak, streak)
 
+        val showStreak = WidgetLayout.streakVisible(heightDp, streak)
+
         when {
-          isWideShort && !isTiny -> {
+          mode.isWideShort -> {
             views.setViewVisibility(R.id.widget_side_panel, View.VISIBLE)
             views.setViewVisibility(R.id.widget_meta_row, View.GONE)
             views.setViewVisibility(R.id.widget_streak_row, View.GONE)
             views.setViewVisibility(
               R.id.widget_side_streak_row,
-              if (streak.isNotBlank()) View.VISIBLE else View.GONE,
+              if (showStreak) View.VISIBLE else View.GONE,
             )
           }
-          isTall -> {
+          mode.isTall -> {
             views.setViewVisibility(R.id.widget_side_panel, View.GONE)
             views.setViewVisibility(R.id.widget_meta_row, View.VISIBLE)
             views.setViewVisibility(
               R.id.widget_streak_row,
-              if (streak.isNotBlank()) View.VISIBLE else View.GONE,
+              if (showStreak) View.VISIBLE else View.GONE,
             )
             views.setViewVisibility(R.id.widget_side_streak_row, View.GONE)
           }
           else -> {
-            // Tiny square: hero only.
             views.setViewVisibility(R.id.widget_side_panel, View.GONE)
             views.setViewVisibility(R.id.widget_meta_row, View.GONE)
             views.setViewVisibility(R.id.widget_streak_row, View.GONE)
