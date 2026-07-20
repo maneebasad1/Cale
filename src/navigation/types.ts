@@ -46,6 +46,8 @@ export type MainStackParamList = {
   AddEntry: {
     date: string;
     entryId?: string;
+    /** Pre-select meal when opened from a meal reminder notification. */
+    mealType?: import('../types').MealType;
     /** Set when returning from AddCustomFood so the new food is selected. */
     prefillFood?: import('../types/food').FoodItem;
   };
@@ -86,5 +88,5 @@ export type HistoryStackParamList = {
 export type RootStackParamList = {
   Auth: undefined;
   Onboarding: undefined;
-  Main: undefined;
+  Main: import('@react-navigation/native').NavigatorScreenParams<MainStackParamList> | undefined;
 };

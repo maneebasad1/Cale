@@ -124,6 +124,9 @@ export async function scheduleWorkoutReminder(
       id: notificationId,
       title: 'CALE',
       body: workoutReminderBody(),
+      data: {
+        target: 'AddWorkout',
+      },
       android: {
         channelId: WORKOUT_CHANNEL_ID,
         pressAction: { id: 'default' },
@@ -153,6 +156,10 @@ export async function scheduleMealReminder(
       id: notificationId,
       title: 'CALE',
       body: mealReminderBody(meal),
+      data: {
+        target: 'AddEntry',
+        meal,
+      },
       android: {
         channelId: CHANNEL_ID,
         pressAction: { id: 'default' },
@@ -177,6 +184,10 @@ export async function sendTestNotification(
     id: TEST_NOTIFICATION_ID,
     title: 'CALE',
     body: mealReminderBody(meal),
+    data: {
+      target: 'AddEntry',
+      meal,
+    },
     android: {
       channelId: CHANNEL_ID,
       pressAction: { id: 'default' },
@@ -201,6 +212,9 @@ export async function sendTestWorkoutNotification(): Promise<{
     id: TEST_WORKOUT_NOTIFICATION_ID,
     title: 'CALE',
     body: workoutReminderBody(),
+    data: {
+      target: 'AddWorkout',
+    },
     android: {
       channelId: WORKOUT_CHANNEL_ID,
       pressAction: { id: 'default' },

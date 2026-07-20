@@ -48,10 +48,12 @@ function foodFromEntry(entry: {
 export function AddEntryScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
-  const { date, entryId, prefillFood } = route.params;
+  const { date, entryId, prefillFood, mealType: initialMealType } = route.params;
   const isEditing = Boolean(entryId);
 
-  const [mealType, setMealType] = useState<MealType>('breakfast');
+  const [mealType, setMealType] = useState<MealType>(
+    initialMealType ?? 'breakfast',
+  );
   const [entryMode, setEntryMode] = useState<EntryMode>('food');
   const [calories, setCalories] = useState('');
   const [customName, setCustomName] = useState('');
