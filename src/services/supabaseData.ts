@@ -1,17 +1,23 @@
 import { getSupabase } from '../lib/supabase';
 import type { CalorieEntry, DailyLog, UserProfile } from '../types';
 import type { FoodItem } from '../types/food';
+import type { TargetSnapshot } from '../types/targetHistory';
 import type { WeightEntry } from '../types/weight';
+import type { WorkoutEntry } from '../types/workout';
 import {
   CalorieEntryRow,
   CustomFoodRow,
   ProfileRow,
+  TargetHistoryRow,
   WeightEntryRow,
+  WorkoutEntryRow,
   customFoodFromRow,
   entryFromRow,
   profileFromRow,
   profileToRow,
+  targetSnapshotFromRow,
   weightFromRow,
+  workoutFromRow,
 } from './supabaseMappers';
 
 /** Local session read — no network round-trip. Prefer for identity checks. */
@@ -254,6 +260,105 @@ export async function deleteWeightEntryRow(id: string): Promise<void> {
     .eq('id', id)
     .eq('user_id', userId);
 
+  if (error) {
+    throw error;
+  }
+}
+
+export async function fetchTargetHistory(): Promise<TargetSnapshot[]> {
+  const userId = await getUserId();
+  const { data, error } = await getSupabase()
+    .from('target_history')
+    .select('*')
+    .eq('user_id', userId)
+    .order('effective_from', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+  return (data as TargetHistoryRow[]).map(targetSnapshotFromRow);
+}
+
+export async function replaceTargetHistoryRemote(
+  snapshots: TargetSnapshot[],
+): Promise<void> {
+  const userId = await getUserId();
+  const { error: deleteError } = await getSupabase()
+    .from('target_history')
+    .delete()
+    .eq('user_id', userId);
+  if (deleteError) {
+    throw deleteError;
+  }
+  if (!snapshots.length) {
+    return;
+  }
+  const rows = snapshots.map(snapshot => ({
+    user_id: userId,
+    effective_from: snapshot.effectiveFrom,
+    daily_target_calories: snapshot.dailyTargetCalories,
+    maintenance_calories: snapshot.maintenanceCalories,
+  }));
+  const { error } = await getSupabase().from('target_history').insert(rows);
+  if (error) {
+    throw error;
+  }
+}
+
+export async function fetchAllWorkouts(): Promise<Record<string, WorkoutEntry[]>> {
+  const userId = await getUserId();
+  const { data, error } = await getSupabase()
+    .from('workout_entries')
+    .select('*')
+    .eq('user_id', userId)
+    .order('logged_at', { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  const workouts: Record<string, WorkoutEntry[]> = {};
+  (data as WorkoutEntryRow[]).forEach(row => {
+    const entry = workoutFromRow(row);
+    if (!workouts[entry.date]) {
+      workouts[entry.date] = [];
+    }
+    workouts[entry.date].push(entry);
+  });
+  return workouts;
+}
+
+export async function upsertWorkoutEntry(
+  date: string,
+  entry: WorkoutEntry,
+): Promise<void> {
+  const userId = await getUserId();
+  const { error } = await getSupabase().from('workout_entries').upsert(
+    {
+      id: entry.id,
+      user_id: userId,
+      log_date: date,
+      name: entry.name,
+      calories_burned: entry.caloriesBurned,
+      duration_minutes: entry.durationMinutes ?? null,
+      entry_mode: entry.entryMode,
+      workout_ref: entry.workoutId ?? null,
+      logged_at: entry.timestamp,
+    },
+    { onConflict: 'id' },
+  );
+  if (error) {
+    throw error;
+  }
+}
+
+export async function deleteWorkoutEntryRow(id: string): Promise<void> {
+  const userId = await getUserId();
+  const { error } = await getSupabase()
+    .from('workout_entries')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId);
   if (error) {
     throw error;
   }

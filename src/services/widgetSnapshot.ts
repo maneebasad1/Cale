@@ -1,5 +1,6 @@
 import { formatDateKey, formatDisplayDate } from '../utils/date';
 import { getCurrentStreak } from '../utils/streak';
+import { calculateRemainingCalories } from '../utils/workoutCalories';
 import {
   getAllLogs,
   getProfile,
@@ -38,8 +39,8 @@ export async function refreshHomeWidget(): Promise<void> {
     const consumed = getTotalCalories(log);
     const target =
       profile.dailyTargetCalories ?? profile.maintenanceCalories ?? 0;
-    const remaining = target - consumed;
-    const isOver = consumed > target;
+    const remaining = calculateRemainingCalories(target, consumed);
+    const isOver = remaining < 0;
     const streak = getCurrentStreak(logs, today);
 
     await pushWidgetSnapshot({

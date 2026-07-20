@@ -58,6 +58,10 @@ export type MainStackParamList = {
       }
     | undefined;
   MyFoods: undefined;
+  AddWorkout: {
+    date: string;
+    entryId?: string;
+  };
 };
 
 export type MainTabParamList = {

@@ -30,12 +30,17 @@ import {
   getProfile,
   getTotalCalories,
 } from '../../services/storage';
+import { ensureTargetHistorySeeded, getTargetHistory } from '../../services/targetHistoryService';
+import { getAllWorkouts } from '../../services/workoutService';
 import type { DailyLog, UserProfile } from '../../types';
-import { getPeriodSummary } from '../../utils/calorieStats';
+import type { TargetSnapshot } from '../../types/targetHistory';
+import type { WorkoutEntry } from '../../types/workout';
+import { getPeriodSummary, getTrailingDates } from '../../utils/calorieStats';
+import { getTargetForDate } from '../../utils/targetHistory';
+import { getTotalWorkoutCalories } from '../../utils/workoutCalories';
 import {
   formatDateKey,
   getMonthStart,
-  getWeekStart,
   isFutureDate,
 } from '../../utils/date';
 
@@ -44,6 +49,7 @@ type MarkedDates = Record<
   {
     marked?: boolean;
     dotColor?: string;
+    hasWorkout?: boolean;
     customStyles?: {
       container?: object;
       text?: object;
@@ -65,26 +71,48 @@ export function HistoryScreen() {
   const [view, setView] = useState<HistoryView>('calendar');
   const [summaryPeriod, setSummaryPeriod] = useState<SummaryPeriod>('week');
   const [logs, setLogs] = useState<Record<string, DailyLog>>({});
+  const [targetSnapshots, setTargetSnapshots] = useState<TargetSnapshot[]>([]);
+  const [workoutDays, setWorkoutDays] = useState<Record<string, WorkoutEntry[]>>({});
 
   const loadData = useCallback(async () => {
-    const [allLogs, userProfile] = await Promise.all([
+    const [allLogs, userProfile, snapshotsRaw, allWorkouts] = await Promise.all([
       getAllLogs(),
       getProfile(),
+      getTargetHistory(),
+      getAllWorkouts(),
     ]);
+    const snapshots =
+      userProfile && !snapshotsRaw.length
+        ? await ensureTargetHistorySeeded(userProfile)
+        : snapshotsRaw;
     setProfile(userProfile);
     setLogs(allLogs);
+    setTargetSnapshots(snapshots);
+    setWorkoutDays(allWorkouts);
 
-    const target = userProfile?.dailyTargetCalories ?? userProfile?.maintenanceCalories ?? 0;
+    const fallback = userProfile
+      ? {
+          dailyTargetCalories: userProfile.dailyTargetCalories,
+          maintenanceCalories: userProfile.maintenanceCalories,
+        }
+      : { dailyTargetCalories: 0, maintenanceCalories: 0 };
+
     const marks: MarkedDates = {};
     const totals: Record<string, number> = {};
 
     Object.values(allLogs).forEach(log => {
       const total = getTotalCalories(log);
       totals[log.date] = total;
-      const tone = getProgressTone(total, target);
+      const dayTarget = getTargetForDate(
+        log.date,
+        snapshots,
+        fallback,
+      ).dailyTargetCalories;
+      const tone = getProgressTone(total, dayTarget);
       marks[log.date] = {
         marked: true,
         dotColor: progressColor(tone),
+        hasWorkout: Boolean(allWorkouts[log.date]?.length),
         customStyles: {
           container: {
             backgroundColor: progressMute(tone),
@@ -96,6 +124,22 @@ export function HistoryScreen() {
           },
         },
       };
+    });
+
+    Object.keys(allWorkouts).forEach(date => {
+      if (!marks[date]) {
+        marks[date] = {
+          hasWorkout: true,
+          customStyles: {
+            container: {
+              borderRadius: radii.sm,
+            },
+            text: {
+              color: colors.text,
+            },
+          },
+        };
+      }
     });
 
     marks[today] = {
@@ -127,12 +171,50 @@ export function HistoryScreen() {
   const target = profile?.dailyTargetCalories ?? profile?.maintenanceCalories ?? 0;
   const goalType = profile?.goalType ?? 'lose';
 
+  const targetFallback = profile
+    ? {
+        dailyTargetCalories: profile.dailyTargetCalories,
+        maintenanceCalories: profile.maintenanceCalories,
+      }
+    : { dailyTargetCalories: 0, maintenanceCalories: 0 };
+
+  const getTargetForDay = useCallback(
+    (date: string) =>
+      getTargetForDate(date, targetSnapshots, targetFallback)
+        .dailyTargetCalories,
+    [targetFallback, targetSnapshots],
+  );
+
+  const workoutCaloriesByDate = useMemo(() => {
+    const totals: Record<string, number> = {};
+    Object.entries(workoutDays).forEach(([date, entries]) => {
+      totals[date] = getTotalWorkoutCalories(entries);
+    });
+    return totals;
+  }, [workoutDays]);
+
   const periodSummary = useMemo(() => {
     const endDate = today;
     const startDate =
-      summaryPeriod === 'week' ? getWeekStart(today) : getMonthStart(today);
-    return getPeriodSummary(logs, startDate, endDate, target, goalType);
-  }, [goalType, logs, summaryPeriod, target, today]);
+      summaryPeriod === 'week'
+        ? getTrailingDates(endDate, 7)[0]!
+        : getMonthStart(today);
+    return getPeriodSummary(
+      logs,
+      startDate,
+      endDate,
+      getTargetForDay,
+      goalType,
+      workoutCaloriesByDate,
+    );
+  }, [
+    getTargetForDay,
+    goalType,
+    logs,
+    summaryPeriod,
+    today,
+    workoutCaloriesByDate,
+  ]);
 
   const handleDayPress = (day: DateData) => {
     if (isFutureDate(day.dateString)) {
@@ -206,20 +288,18 @@ export function HistoryScreen() {
                       styles.periodText,
                       summaryPeriod === option && styles.periodTextActive,
                     ]}>
-                    {option === 'week' ? 'This week' : 'This month'}
+                    {option === 'week' ? 'Last 7 days' : 'This month'}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
             <HistorySummaryPanel
               summary={periodSummary}
-              target={target}
               goalType={goalType}
               periodLabel={
-                summaryPeriod === 'week'
-                  ? 'This week'
-                  : 'This month'
+                summaryPeriod === 'week' ? 'Last 7 days' : 'This month'
               }
+              workoutDays={workoutDays}
             />
           </>
         ) : (
@@ -290,6 +370,9 @@ export function HistoryScreen() {
                         {total}
                       </Text>
                     )}
+                    {customMarking?.hasWorkout && !isFuture ? (
+                      <Text style={styles.workoutDot}>⚡</Text>
+                    ) : null}
                   </TouchableOpacity>
                 );
               }}
@@ -514,5 +597,11 @@ const styles = StyleSheet.create({
   },
   dayTotalDisabled: {
     color: colors.border,
+  },
+  workoutDot: {
+    fontSize: 8,
+    lineHeight: 10,
+    marginTop: 1,
+    opacity: 0.7,
   },
 });

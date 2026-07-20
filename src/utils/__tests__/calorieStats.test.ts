@@ -21,7 +21,13 @@ describe('calorieStats utils', () => {
   });
 
   it('summarizes period stats', () => {
-    const summary = getPeriodSummary(logs, '2026-07-01', '2026-07-02', 1800, 'lose');
+    const summary = getPeriodSummary(
+      logs,
+      '2026-07-01',
+      '2026-07-02',
+      () => 1800,
+      'lose',
+    );
     expect(summary.averageDailyCalories).toBe(1500);
     expect(summary.days).toHaveLength(2);
     expect(summary.bestDay?.date).toBe('2026-07-01');

@@ -2,7 +2,9 @@ import type { CalorieEntry, MealReminders, UserProfile } from '../types';
 import { DEFAULT_MEAL_REMINDERS, MEAL_REMINDER_MEALS } from '../types';
 import { isAnyMealReminderEnabled, resolveMealReminders } from '../utils/mealReminders';
 import type { FoodItem } from '../types/food';
+import type { TargetSnapshot } from '../types/targetHistory';
 import type { WeightEntry } from '../types/weight';
+import type { WorkoutEntry } from '../types/workout';
 
 export interface ProfileRow {
   id: string;
@@ -12,6 +14,7 @@ export interface ProfileRow {
   gender: UserProfile['gender'];
   activity_level: UserProfile['activityLevel'];
   maintenance_calories: number;
+  maintenance_is_custom: boolean | null;
   goal_type: UserProfile['goalType'];
   goal_weight_kg: number;
   calorie_adjustment: number;
@@ -56,6 +59,26 @@ export interface WeightEntryRow {
   created_at: string;
 }
 
+export interface TargetHistoryRow {
+  id: string;
+  user_id: string;
+  effective_from: string;
+  daily_target_calories: number;
+  maintenance_calories: number;
+}
+
+export interface WorkoutEntryRow {
+  id: string;
+  user_id: string;
+  log_date: string;
+  name: string;
+  calories_burned: number;
+  duration_minutes: number | null;
+  entry_mode: WorkoutEntry['entryMode'];
+  workout_ref: string | null;
+  logged_at: string;
+}
+
 export function profileFromRow(row: ProfileRow): UserProfile {
   return {
     weightKg: row.weight_kg,
@@ -64,6 +87,7 @@ export function profileFromRow(row: ProfileRow): UserProfile {
     gender: row.gender,
     activityLevel: row.activity_level,
     maintenanceCalories: row.maintenance_calories,
+    maintenanceIsCustom: row.maintenance_is_custom ?? undefined,
     goalType: row.goal_type,
     goalWeightKg: row.goal_weight_kg,
     calorieAdjustment: row.calorie_adjustment,
@@ -94,6 +118,7 @@ export function profileToRow(userId: string, profile: UserProfile): ProfileRow {
     gender: profile.gender,
     activity_level: profile.activityLevel,
     maintenance_calories: profile.maintenanceCalories,
+    maintenance_is_custom: profile.maintenanceIsCustom ?? false,
     goal_type: profile.goalType,
     goal_weight_kg: profile.goalWeightKg,
     calorie_adjustment: profile.calorieAdjustment,
@@ -141,5 +166,38 @@ export function weightFromRow(row: WeightEntryRow): WeightEntry {
     id: row.id,
     date: row.log_date,
     weightKg: row.weight_kg,
+  };
+}
+
+export function targetSnapshotFromRow(row: TargetHistoryRow): TargetSnapshot {
+  return {
+    effectiveFrom: row.effective_from,
+    dailyTargetCalories: row.daily_target_calories,
+    maintenanceCalories: row.maintenance_calories,
+  };
+}
+
+export function targetSnapshotToRow(
+  userId: string,
+  snapshot: TargetSnapshot,
+): Omit<TargetHistoryRow, 'id'> & { id?: string } {
+  return {
+    user_id: userId,
+    effective_from: snapshot.effectiveFrom,
+    daily_target_calories: snapshot.dailyTargetCalories,
+    maintenance_calories: snapshot.maintenanceCalories,
+  };
+}
+
+export function workoutFromRow(row: WorkoutEntryRow): WorkoutEntry {
+  return {
+    id: row.id,
+    date: row.log_date,
+    name: row.name,
+    caloriesBurned: row.calories_burned,
+    durationMinutes: row.duration_minutes ?? undefined,
+    entryMode: row.entry_mode,
+    workoutId: row.workout_ref ?? undefined,
+    timestamp: row.logged_at,
   };
 }

@@ -1,24 +1,25 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { CalorieBarChart } from './CalorieBarChart';
+import { CalorieLineChart } from './CalorieLineChart';
 import { EmptyState } from '../EmptyState';
 import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import type { GoalType } from '../../types';
+import type { WorkoutEntry } from '../../types/workout';
 import type { PeriodSummary } from '../../utils/calorieStats';
 import { formatShortDate } from '../../utils/date';
 
 interface HistorySummaryPanelProps {
   summary: PeriodSummary;
-  target: number;
   goalType: GoalType;
   periodLabel: string;
+  workoutDays?: Record<string, WorkoutEntry[]>;
 }
 
 export function HistorySummaryPanel({
   summary,
-  target,
   goalType,
   periodLabel,
+  workoutDays = {},
 }: HistorySummaryPanelProps) {
   const bestLabel =
     goalType === 'maintain' ? 'Closest to target' : 'Best day';
@@ -27,7 +28,18 @@ export function HistorySummaryPanel({
 
   const hasLoggedDays = summary.days.some(day => day.total > 0);
 
-  if (!hasLoggedDays) {
+  const topWorkoutName = (() => {
+    const counts = new Map<string, number>();
+    Object.values(workoutDays).forEach(entries => {
+      entries.forEach(entry => {
+        counts.set(entry.name, (counts.get(entry.name) ?? 0) + 1);
+      });
+    });
+    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    return sorted[0]?.[0] ?? null;
+  })();
+
+  if (!hasLoggedDays && summary.totalWorkoutCalories === 0) {
     return (
       <View style={styles.container}>
         <Text style={styles.period}>{periodLabel}</Text>
@@ -76,7 +88,14 @@ export function HistorySummaryPanel({
         )}
       </View>
 
-      <CalorieBarChart days={summary.days} target={target} />
+      {summary.totalWorkoutCalories > 0 ? (
+        <Text style={styles.workoutLine}>
+          {summary.totalWorkoutCalories.toLocaleString()} kcal burned
+          {topWorkoutName ? ` · most logged: ${topWorkoutName}` : ''}
+        </Text>
+      ) : null}
+
+      <CalorieLineChart days={summary.days} />
     </View>
   );
 }
@@ -125,5 +144,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  workoutLine: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
   },
 });

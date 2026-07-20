@@ -11,15 +11,28 @@ export function buildUpdatedProfile(
   updates: Partial<UserProfile>,
 ): UserProfile {
   const merged = { ...base, ...updates };
-  const maintenanceCalories = calculateMaintenance(
-    merged.weightKg,
-    merged.heightCm,
-    merged.age,
-    merged.gender,
-    merged.activityLevel,
-  );
   const goalWeightKg =
     merged.goalType === 'maintain' ? merged.weightKg : merged.goalWeightKg;
+
+  const preserveCustomMaintenance =
+    merged.maintenanceIsCustom &&
+    updates.maintenanceCalories === undefined &&
+    updates.maintenanceIsCustom !== false;
+
+  let maintenanceCalories: number;
+  if (preserveCustomMaintenance) {
+    maintenanceCalories = merged.maintenanceCalories;
+  } else if (updates.maintenanceCalories !== undefined) {
+    maintenanceCalories = updates.maintenanceCalories;
+  } else {
+    maintenanceCalories = calculateMaintenance(
+      merged.weightKg,
+      merged.heightCm,
+      merged.age,
+      merged.gender,
+      merged.activityLevel,
+    );
+  }
 
   const preserveCustomAdjustment =
     merged.adjustmentIsCustom &&
@@ -48,6 +61,9 @@ export function buildUpdatedProfile(
     merged.goalType,
   );
 
+  const maintenanceIsCustom =
+    updates.maintenanceIsCustom ?? merged.maintenanceIsCustom ?? false;
+
   const adjustmentIsCustom =
     merged.goalType === 'maintain'
       ? false
@@ -59,6 +75,7 @@ export function buildUpdatedProfile(
     maintenanceCalories,
     calorieAdjustment,
     dailyTargetCalories,
+    maintenanceIsCustom,
     adjustmentIsCustom,
   };
 }
@@ -68,13 +85,16 @@ export function buildAutoProfileTargets(
   overrides: Partial<UserProfile> = {},
 ): Pick<UserProfile, 'calorieAdjustment' | 'dailyTargetCalories'> {
   const merged = { ...profile, ...overrides };
-  const maintenanceCalories = calculateMaintenance(
-    merged.weightKg,
-    merged.heightCm,
-    merged.age,
-    merged.gender,
-    merged.activityLevel,
-  );
+  const maintenanceCalories =
+    merged.maintenanceIsCustom && overrides.maintenanceCalories === undefined
+      ? merged.maintenanceCalories
+      : calculateMaintenance(
+          merged.weightKg,
+          merged.heightCm,
+          merged.age,
+          merged.gender,
+          merged.activityLevel,
+        );
   const goalWeightKg =
     merged.goalType === 'maintain' ? merged.weightKg : merged.goalWeightKg;
   return resolveProfileTargets(

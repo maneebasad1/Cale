@@ -59,6 +59,8 @@ export interface UserProfile {
   gender: Gender;
   activityLevel: ActivityLevel;
   maintenanceCalories: number;
+  /** When true, maintenanceCalories is user-set and not recalculated from BMR. */
+  maintenanceIsCustom?: boolean;
   goalType: GoalType;
   goalWeightKg: number;
   calorieAdjustment: number;

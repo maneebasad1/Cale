@@ -81,7 +81,7 @@ export function ProfileScreen() {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}>
         <View style={styles.headerCard}>
-          <UserAvatar user={user} size={80} style={styles.avatar} />
+          <UserAvatar user={user} size={60} style={styles.avatar} />
           {displayName ? (
             <Text style={styles.displayName}>{displayName}</Text>
           ) : null}
@@ -211,8 +211,8 @@ const styles = StyleSheet.create({
   headerCard: {
     backgroundColor: colors.noriMute,
     borderRadius: radii.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
     alignItems: 'center',
   },
   avatar: {
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   displayName: {
     ...typography.heading,
     color: colors.ink,
-    marginBottom: spacing.xs,
+    // marginBottom: spacing.xs,
   },
   email: {
     ...typography.caption,
@@ -230,14 +230,13 @@ const styles = StyleSheet.create({
   },
   targetValue: {
     fontFamily: fonts.displayBold,
-    fontSize: 28,
+    fontSize: 24,
     lineHeight: 34,
     color: colors.nori,
   },
   targetSub: {
     ...typography.caption,
     color: colors.stone,
-    marginTop: spacing.xs,
   },
   menuGroup: {
     backgroundColor: colors.porcelain,
@@ -245,6 +244,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
     overflow: 'hidden',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
 });

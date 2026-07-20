@@ -12,6 +12,8 @@ import {
 } from './localStore';
 import { enqueueSync } from './syncQueue';
 
+import { recordTargetSnapshotIfChanged } from './targetHistoryService';
+
 function scheduleWidgetRefresh() {
   void import('./widgetSnapshot')
     .then(mod => mod.refreshHomeWidget())
@@ -24,6 +26,7 @@ export async function getProfile(): Promise<UserProfile | null> {
 
 export async function saveProfile(profile: UserProfile): Promise<void> {
   await localSaveProfile(profile);
+  await recordTargetSnapshotIfChanged(profile);
   await enqueueSync({
     entity: 'profile',
     operation: 'update',

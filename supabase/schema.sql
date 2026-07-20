@@ -126,6 +126,8 @@ begin
   delete from public.calorie_entries where user_id = auth.uid();
   delete from public.custom_foods where user_id = auth.uid();
   delete from public.weight_entries where user_id = auth.uid();
+  delete from public.target_history where user_id = auth.uid();
+  delete from public.workout_entries where user_id = auth.uid();
   delete from public.profiles where id = auth.uid();
   delete from auth.users where id = auth.uid();
 end;
@@ -133,9 +135,50 @@ $$;
 
 grant execute on function public.delete_own_account() to authenticated;
 
--- If you already deployed an older schema, run:
--- alter table public.profiles add column if not exists meal_reminders jsonb;
--- alter table public.profiles add column if not exists adjustment_is_custom boolean not null default false;
+-- If you already deployed an older schema, run supabase/backfill_target_history.sql
+-- in the SQL Editor (schema additions + target_history backfill for existing users).
+
+-- Target history snapshots (for evaluating past days against the target active then)
+create table if not exists public.target_history (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade not null,
+  effective_from date not null,
+  daily_target_calories integer not null,
+  maintenance_calories integer not null,
+  unique (user_id, effective_from)
+);
+
+create index if not exists target_history_user_date_idx
+  on public.target_history (user_id, effective_from desc);
+
+-- Workout entries
+create table if not exists public.workout_entries (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete cascade not null,
+  log_date date not null,
+  name text not null,
+  calories_burned integer not null check (calories_burned > 0),
+  duration_minutes integer,
+  entry_mode text check (entry_mode in ('preset', 'custom')),
+  workout_ref text,
+  logged_at timestamptz not null default now()
+);
+
+create index if not exists workout_entries_user_date_idx
+  on public.workout_entries (user_id, log_date desc);
+
+alter table public.target_history enable row level security;
+alter table public.workout_entries enable row level security;
+
+create policy "Users manage own target history"
+  on public.target_history for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Users manage own workout entries"
+  on public.workout_entries for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 -- ---------------------------------------------------------------------------
 -- Local-first sync notes (app writes AsyncStorage first, then upserts here):

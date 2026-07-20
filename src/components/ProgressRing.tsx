@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import {
   colors,
   fonts,
@@ -15,9 +16,12 @@ import {
   typography,
 } from '../constants/theme';
 
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
 interface ProgressRingProps {
   consumed: number;
   target: number;
+  caloriesBurned?: number;
   size?: number;
   strokeWidth?: number;
 }
@@ -29,6 +33,7 @@ interface ProgressRingProps {
 export function ProgressRing({
   consumed,
   target,
+  caloriesBurned = 0,
   size = 216,
   strokeWidth = 16,
 }: ProgressRingProps) {
@@ -39,8 +44,12 @@ export function ProgressRing({
   const remaining = target - consumed;
   const isOver = consumed > target;
 
+  const radius = (size - strokeWidth) / 2;
+  const center = size / 2;
+  const circumference = 2 * Math.PI * radius;
+
   const [reduceMotion, setReduceMotion] = useState(false);
-  const anim = useRef(new Animated.Value(0)).current;
+  const anim = useRef(new Animated.Value(progress)).current;
 
   useEffect(() => {
     let mounted = true;
@@ -63,24 +72,23 @@ export function ProgressRing({
     Animated.timing(anim, {
       toValue: progress,
       duration: 700,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   }, [progress, reduceMotion, anim]);
 
-  const half = size / 2;
-  const rightRotate = anim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: ['0deg', '180deg', '180deg'],
-  });
-  const leftRotate = anim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: ['0deg', '0deg', '180deg'],
+  const strokeDashoffset = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [circumference, 0],
   });
 
   const heroLabel = isOver
     ? Math.abs(remaining).toLocaleString()
     : remaining.toLocaleString();
   const heroSub = isOver ? 'kcal over' : 'kcal left';
+  const heroFontSize =
+    heroLabel.length > 6 ? 28 : heroLabel.length > 5 ? 32 : 40;
+
+  const innerSize = size - strokeWidth * 2;
 
   return (
     <View
@@ -92,110 +100,81 @@ export function ProgressRing({
         now: consumed,
       }}>
       <View style={[styles.ringBox, { width: size, height: size }]}>
-        {/* Track */}
-        <View
-          style={[
-            styles.track,
-            {
-              width: size,
-              height: size,
-              borderRadius: half,
-              borderWidth: strokeWidth,
-            },
-          ]}
-        />
-
-        {/* Right half */}
-        <View
-          style={[
-            styles.halfClip,
-            { width: half, height: size, left: half },
-          ]}>
-          <Animated.View
-            style={[
-              styles.halfPivot,
-              {
-                width: size,
-                height: size,
-                left: -half,
-                transform: [{ rotate: rightRotate }],
-              },
-            ]}>
-            <View
-              style={[
-                styles.halfFill,
-                {
-                  width: half,
-                  height: size,
-                  left: half,
-                  borderTopRightRadius: half,
-                  borderBottomRightRadius: half,
-                  borderWidth: strokeWidth,
-                  borderLeftWidth: 0,
-                  borderColor: ringColor,
-                },
-              ]}
+        <Svg width={size} height={size} style={styles.svg}>
+          <Circle
+            cx={center}
+            cy={center}
+            r={radius}
+            stroke={colors.border}
+            strokeWidth={strokeWidth}
+            fill="none"
+          />
+          {progress > 0 ? (
+            <AnimatedCircle
+              cx={center}
+              cy={center}
+              r={radius}
+              stroke={ringColor}
+              strokeWidth={strokeWidth}
+              fill="none"
+              strokeDasharray={`${circumference} ${circumference}`}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="butt"
+              rotation={-90}
+              origin={`${center}, ${center}`}
             />
-          </Animated.View>
-        </View>
+          ) : null}
+        </Svg>
 
-        {/* Left half */}
-        <View
-          style={[
-            styles.halfClip,
-            { width: half, height: size, left: 0 },
-          ]}>
-          <Animated.View
-            style={[
-              styles.halfPivot,
-              {
-                width: size,
-                height: size,
-                left: 0,
-                transform: [{ rotate: leftRotate }],
-              },
-            ]}>
-            <View
-              style={[
-                styles.halfFill,
-                {
-                  width: half,
-                  height: size,
-                  left: 0,
-                  borderTopLeftRadius: half,
-                  borderBottomLeftRadius: half,
-                  borderWidth: strokeWidth,
-                  borderRightWidth: 0,
-                  borderColor: ringColor,
-                },
-              ]}
-            />
-          </Animated.View>
-        </View>
-
-        {/* Inner porcelain disc */}
         <View
           style={[
             styles.inner,
             {
-              width: size - strokeWidth * 2,
-              height: size - strokeWidth * 2,
-              borderRadius: (size - strokeWidth * 2) / 2,
+              width: innerSize,
+              height: innerSize,
+              borderRadius: innerSize / 2,
             },
           ]}>
-          <Text style={[styles.hero, { color: ringColor }]}>{heroLabel}</Text>
+          <Text
+            style={[
+              styles.hero,
+              { color: ringColor, fontSize: heroFontSize, lineHeight: heroFontSize + 6 },
+            ]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}>
+            {heroLabel}
+          </Text>
           <Text style={[styles.heroSub, { color: ringColor }]}>{heroSub}</Text>
-        </View>
-      </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          {consumed.toLocaleString()} eaten
-        </Text>
-        <Text style={styles.footerDot}>·</Text>
-        <Text style={styles.footerText}>
-          {target.toLocaleString()} target
-        </Text>
+          <View style={styles.stats}>
+            <Text style={styles.statLine}>
+              <Text
+                style={[
+                  styles.statValue,
+                  { color: isOver ? colors.chili : colors.text },
+                ]}>
+                {consumed.toLocaleString()}
+              </Text>
+              <Text style={styles.statLabel}> eaten</Text>
+              {caloriesBurned > 0 ? (
+                <>
+                  <Text style={styles.statLabel}> · </Text>
+                  <Text style={[styles.statValue, styles.statBurned]}>
+                    {caloriesBurned.toLocaleString()}
+                  </Text>
+                  <Text style={styles.statLabel}> burned</Text>
+                </>
+              ) : null}
+            </Text>
+            <Text style={styles.statLine}>
+              <Text style={[styles.statValue, styles.statTarget]}>
+                {target.toLocaleString()}
+              </Text>
+              <Text style={styles.statLabel}> target</Text>
+            </Text>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -204,42 +183,23 @@ export function ProgressRing({
 const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
+    marginVertical: spacing.sm,
   },
   ringBox: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  track: {
+  svg: {
     position: 'absolute',
-    borderColor: colors.border,
-  },
-  halfClip: {
-    position: 'absolute',
-    top: 0,
-    overflow: 'hidden',
-  },
-  halfPivot: {
-    position: 'absolute',
-    top: 0,
-  },
-  halfFill: {
-    position: 'absolute',
-    top: 0,
-    backgroundColor: 'transparent',
   },
   inner: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
   },
   hero: {
     fontFamily: fonts.displayBold,
-    fontSize: 40,
-    lineHeight: 46,
     letterSpacing: -0.5,
     textAlign: 'center',
   },
@@ -247,18 +207,25 @@ const styles = StyleSheet.create({
     ...typography.label,
     marginTop: 2,
   },
-  footer: {
-    flexDirection: 'row',
+  stats: {
+    marginTop: spacing.sm,
     alignItems: 'center',
-    marginTop: spacing.md,
-    gap: spacing.xs,
+    gap: 2,
   },
-  footerText: {
+  statLine: {
     ...typography.caption,
+    textAlign: 'center',
+  },
+  statLabel: {
     color: colors.textSecondary,
   },
-  footerDot: {
-    ...typography.caption,
-    color: colors.textSecondary,
+  statValue: {
+    fontFamily: fonts.bodySemiBold,
+  },
+  statBurned: {
+    color: colors.primary,
+  },
+  statTarget: {
+    color: colors.saffron,
   },
 });

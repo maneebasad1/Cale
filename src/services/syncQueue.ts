@@ -6,7 +6,9 @@ export type SyncEntity =
   | 'calorieEntry'
   | 'weightEntry'
   | 'profile'
-  | 'customFood';
+  | 'customFood'
+  | 'targetHistory'
+  | 'workoutEntry';
 
 export type SyncOperation = 'create' | 'update' | 'delete';
 

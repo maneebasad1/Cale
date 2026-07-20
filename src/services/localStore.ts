@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CalorieEntry, DailyLog, UserProfile } from '../types';
 import type { FoodItem } from '../types/food';
+import type { TargetSnapshot } from '../types/targetHistory';
 import type { WeightEntry } from '../types/weight';
+import type { WorkoutEntry } from '../types/workout';
 import { LOCAL_KEYS } from './localKeys';
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -88,6 +90,48 @@ export async function localSaveCustomFoods(foods: FoodItem[]): Promise<void> {
   await writeJson(LOCAL_KEYS.customFoods, foods);
 }
 
+export async function localGetTargetHistory(): Promise<TargetSnapshot[]> {
+  return readJson<TargetSnapshot[]>(LOCAL_KEYS.targetHistory, []);
+}
+
+export async function localSaveTargetHistory(
+  snapshots: TargetSnapshot[],
+): Promise<void> {
+  await writeJson(LOCAL_KEYS.targetHistory, snapshots);
+}
+
+export async function localGetAllWorkouts(): Promise<
+  Record<string, WorkoutEntry[]>
+> {
+  return readJson<Record<string, WorkoutEntry[]>>(LOCAL_KEYS.workouts, {});
+}
+
+export async function localSaveAllWorkouts(
+  workouts: Record<string, WorkoutEntry[]>,
+): Promise<void> {
+  await writeJson(LOCAL_KEYS.workouts, workouts);
+}
+
+export async function localGetWorkoutsForDate(
+  date: string,
+): Promise<WorkoutEntry[]> {
+  const all = await localGetAllWorkouts();
+  return all[date] ?? [];
+}
+
+export async function localSaveWorkoutsForDate(
+  date: string,
+  entries: WorkoutEntry[],
+): Promise<void> {
+  const all = await localGetAllWorkouts();
+  if (entries.length === 0) {
+    delete all[date];
+  } else {
+    all[date] = entries;
+  }
+  await localSaveAllWorkouts(all);
+}
+
 export async function localGetWeightEntries(): Promise<WeightEntry[]> {
   return readJson<WeightEntry[]>(LOCAL_KEYS.weightEntries, []);
 }
@@ -112,14 +156,24 @@ export async function localClearHydratedUserId(): Promise<void> {
 
 /** True when local entity store has no meaningful user data yet. */
 export async function localIsEmpty(): Promise<boolean> {
-  const [profile, logs, foods, weights] = await Promise.all([
+  const [profile, logs, foods, weights, targets, workouts] = await Promise.all([
     localGetProfile(),
     localGetAllLogs(),
     localGetCustomFoods(),
     localGetWeightEntries(),
+    localGetTargetHistory(),
+    localGetAllWorkouts(),
   ]);
   const hasLogs = Object.keys(logs).length > 0;
-  return !profile && !hasLogs && foods.length === 0 && weights.length === 0;
+  const hasWorkouts = Object.keys(workouts).length > 0;
+  return (
+    !profile &&
+    !hasLogs &&
+    foods.length === 0 &&
+    weights.length === 0 &&
+    targets.length === 0 &&
+    !hasWorkouts
+  );
 }
 
 /** Wipe all local-first entity data + sync queue (call on sign-out / account switch). */
@@ -130,8 +184,11 @@ export async function resetLocalEntityStore(): Promise<void> {
     localSaveAllLogs({}),
     localSaveCustomFoods([]),
     localSaveWeightEntries([]),
+    localSaveTargetHistory([]),
+    localSaveAllWorkouts({}),
     clearSyncQueue(),
     localClearHydratedUserId(),
+    AsyncStorage.removeItem(LOCAL_KEYS.targetHistoryBackfillV1),
   ]);
   void import('./widgetSnapshot')
     .then(mod => mod.refreshHomeWidget())

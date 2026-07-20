@@ -34,6 +34,7 @@ export function getTrailingAverageCalories(
 export interface DayStat {
   date: string;
   total: number;
+  target: number;
   deltaFromTarget: number;
 }
 
@@ -42,6 +43,8 @@ export interface PeriodSummary {
   bestDay: DayStat | null;
   worstDay: DayStat | null;
   days: DayStat[];
+  totalWorkoutCalories: number;
+  topWorkoutName: string | null;
 }
 
 function rankDay(
@@ -61,17 +64,20 @@ export function getPeriodSummary(
   logs: Record<string, DailyLog>,
   startDate: string,
   endDate: string,
-  target: number,
+  getTargetForDate: (date: string) => number,
   goalType: GoalType,
+  workoutCaloriesByDate: Record<string, number> = {},
 ): PeriodSummary {
   const days: DayStat[] = [];
   let cursor = startDate;
 
   while (cursor <= endDate) {
     const total = sumLogCalories(logs[cursor]);
+    const target = getTargetForDate(cursor);
     days.push({
       date: cursor,
       total,
+      target,
       deltaFromTarget: total - target,
     });
     cursor = addDays(cursor, 1);
@@ -88,11 +94,17 @@ export function getPeriodSummary(
     (a, b) => rankDay(goalType, b.deltaFromTarget) - rankDay(goalType, a.deltaFromTarget),
   );
 
+  const totalWorkoutCalories = Object.entries(workoutCaloriesByDate)
+    .filter(([date]) => date >= startDate && date <= endDate)
+    .reduce((sum, [, burned]) => sum + burned, 0);
+
   return {
     averageDailyCalories,
     bestDay: ranked[0] ?? null,
     worstDay: ranked[ranked.length - 1] ?? null,
     days,
+    totalWorkoutCalories,
+    topWorkoutName: null,
   };
 }
 

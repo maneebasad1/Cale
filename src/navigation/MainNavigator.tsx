@@ -7,6 +7,7 @@ import { colors, fonts } from '../constants/theme';
 import { AddEntryScreen } from '../screens/entry/AddEntryScreen';
 import { AddCustomFoodScreen } from '../screens/foods/AddCustomFoodScreen';
 import { MyFoodsScreen } from '../screens/foods/MyFoodsScreen';
+import { AddWorkoutScreen } from '../screens/workout/AddWorkoutScreen';
 import { DayDetailScreen } from '../screens/history/DayDetailScreen';
 import { HistoryScreen } from '../screens/history/HistoryScreen';
 import { HomeScreen } from '../screens/home/HomeScreen';
@@ -119,6 +120,11 @@ export function MainNavigator() {
         name="MyFoods"
         component={MyFoodsScreen}
         options={{ title: 'My Foods' }}
+      />
+      <MainStack.Screen
+        name="AddWorkout"
+        component={AddWorkoutScreen}
+        options={{ title: 'Log workout' }}
       />
     </MainStack.Navigator>
   );

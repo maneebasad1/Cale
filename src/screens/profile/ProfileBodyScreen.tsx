@@ -22,6 +22,8 @@ import type {
   WeightUnit,
 } from '../../types';
 import { ACTIVITY_LEVELS } from '../../types';
+import { calculateMaintenance } from '../../utils/bmr';
+import { validateMaintenanceCalories } from '../../utils/maintenanceValidation';
 import { buildUpdatedProfile } from '../../utils/profileSave';
 import {
   promptCustomAdjustmentUpdate,
@@ -45,6 +47,9 @@ export function ProfileBodyScreen() {
   const [age, setAge] = useState('');
   const [gender, setGender] = useState<Gender>('male');
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>('sedentary');
+  const [maintenanceIsCustom, setMaintenanceIsCustom] = useState(false);
+  const [maintenanceInput, setMaintenanceInput] = useState('');
+  const [maintenanceError, setMaintenanceError] = useState<string | null>(null);
 
   const loadProfile = useCallback(async () => {
     const p = await getProfile();
@@ -71,6 +76,8 @@ export function ProfileBodyScreen() {
     setAge(String(p.age));
     setGender(p.gender);
     setActivityLevel(p.activityLevel);
+    setMaintenanceIsCustom(Boolean(p.maintenanceIsCustom));
+    setMaintenanceInput(String(p.maintenanceCalories));
   }, []);
 
   useFocusEffect(
@@ -104,6 +111,19 @@ export function ProfileBodyScreen() {
 
     const weightKg = weightUnit === 'kg' ? weightNum : lbToKg(weightNum);
 
+    let maintenanceCalories: number | undefined;
+    if (maintenanceIsCustom) {
+      const manualMaintenance = parseInt(maintenanceInput, 10);
+      const error = validateMaintenanceCalories(manualMaintenance);
+      if (error) {
+        setMaintenanceError(error);
+        Alert.alert('Check maintenance calories', error);
+        return;
+      }
+      maintenanceCalories = manualMaintenance;
+      setMaintenanceError(null);
+    }
+
     const applySave = async (useAutoAdjustment: boolean) => {
       const updates = {
         weightKg,
@@ -113,6 +133,10 @@ export function ProfileBodyScreen() {
         activityLevel,
         weightUnit,
         heightUnit,
+        maintenanceIsCustom,
+        ...(maintenanceCalories !== undefined
+          ? { maintenanceCalories }
+          : {}),
         ...(useAutoAdjustment ? { adjustmentIsCustom: false } : {}),
       };
       const updated = buildUpdatedProfile(profile, updates);
@@ -144,9 +168,73 @@ export function ProfileBodyScreen() {
     );
   }
 
+  const autoMaintenance = calculateMaintenance(
+    profile.weightUnit === 'kg'
+      ? parseFloat(weight) || profile.weightKg
+      : lbToKg(parseFloat(weight) || kgToLb(profile.weightKg)),
+    heightUnit === 'cm'
+      ? parseFloat(height) || profile.heightCm
+      : feetInchesToCm(
+          parseInt(heightFeet, 10) || 0,
+          parseInt(heightInches, 10) || 0,
+        ) || profile.heightCm,
+    parseInt(age, 10) || profile.age,
+    gender,
+    activityLevel,
+  );
+
   return (
     <Screen edges={[]}>
       <KeyboardAwareScreen contentContainerStyle={styles.container}>
+        <Text style={styles.sectionLabel}>Maintenance calories</Text>
+        <UnitToggle
+          options={[
+            { value: 'auto' as const, label: 'Auto-calculate' },
+            { value: 'manual' as const, label: 'Set manually' },
+          ]}
+          value={maintenanceIsCustom ? 'manual' : 'auto'}
+          onChange={mode => {
+            const manual = mode === 'manual';
+            setMaintenanceIsCustom(manual);
+            if (manual && !maintenanceInput) {
+              setMaintenanceInput(String(Math.round(autoMaintenance)));
+            }
+            setMaintenanceError(null);
+          }}
+          style={styles.toggle}
+        />
+        {maintenanceIsCustom ? (
+          <>
+            <LabeledInput
+              label="Daily maintenance"
+              value={maintenanceInput}
+              onChangeText={text => {
+                setMaintenanceInput(text);
+                const num = parseInt(text, 10);
+                setMaintenanceError(
+                  text.trim() ? validateMaintenanceCalories(num) : null,
+                );
+              }}
+              keyboardType="number-pad"
+              suffix="kcal/day"
+            />
+            {maintenanceError ? (
+              <Text style={styles.error}>{maintenanceError}</Text>
+            ) : null}
+          </>
+        ) : (
+          <Text style={styles.hint}>
+            Currently estimated at {Math.round(autoMaintenance).toLocaleString()}{' '}
+            kcal/day from your body metrics and activity level.
+          </Text>
+        )}
+        {maintenanceIsCustom ? (
+          <Text style={styles.hint}>
+            Maintenance calories is set manually — edit it above to change your
+            daily target.
+          </Text>
+        ) : null}
+
         <Text style={styles.sectionLabel}>Weight</Text>
         <UnitToggle
           options={[
@@ -353,5 +441,16 @@ const styles = StyleSheet.create({
   },
   saveBtn: {
     marginTop: spacing.md,
+  },
+  hint: {
+    ...typography.caption,
+    color: colors.stone,
+    marginBottom: spacing.md,
+  },
+  error: {
+    ...typography.caption,
+    color: colors.chili,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
   },
 });

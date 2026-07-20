@@ -8,6 +8,8 @@ import NetInfo from '@react-native-community/netinfo';
 import { AppState, type AppStateStatus, type NativeEventSubscription } from 'react-native';
 import type { CalorieEntry, UserProfile } from '../types';
 import type { FoodItem } from '../types/food';
+import type { TargetSnapshot } from '../types/targetHistory';
+import type { WorkoutEntry } from '../types/workout';
 import type { WeightEntry } from '../types/weight';
 import {
   localGetHydratedUserId,
@@ -15,6 +17,8 @@ import {
   localSaveAllLogs,
   localSaveCustomFoods,
   localSaveProfile,
+  localSaveTargetHistory,
+  localSaveAllWorkouts,
   localSaveWeightEntries,
   localSetHydratedUserId,
   resetLocalEntityStore,
@@ -137,6 +141,21 @@ async function processItem(item: SyncQueueItem): Promise<void> {
       await db.upsertWeightEntryRemote(entry);
       return;
     }
+    case 'targetHistory': {
+      const snapshots = item.payload.snapshots as TargetSnapshot[];
+      await db.replaceTargetHistoryRemote(snapshots);
+      return;
+    }
+    case 'workoutEntry': {
+      if (item.operation === 'delete') {
+        await db.deleteWorkoutEntryRow(item.payload.id as string);
+        return;
+      }
+      const date = item.payload.date as string;
+      const entry = item.payload.entry as WorkoutEntry;
+      await db.upsertWorkoutEntry(date, entry);
+      return;
+    }
     default:
       throw new Error(`Unknown sync entity: ${(item as SyncQueueItem).entity}`);
   }
@@ -168,12 +187,14 @@ export async function hydrateFromRemoteIfNeeded(): Promise<boolean> {
   }
 
   try {
-    const [profile, logs, foods, weights] = await withTimeout(
+    const [profile, logs, foods, weights, targets, workouts] = await withTimeout(
       Promise.all([
         db.fetchProfile(),
         db.fetchAllLogs(),
         db.fetchCustomFoods(),
         db.fetchWeightEntries(),
+        db.fetchTargetHistory(),
+        db.fetchAllWorkouts(),
       ]),
       HYDRATE_FETCH_TIMEOUT_MS,
       'Remote hydration timed out',
@@ -184,7 +205,15 @@ export async function hydrateFromRemoteIfNeeded(): Promise<boolean> {
     await localSaveAllLogs(logs);
     await localSaveCustomFoods(foods);
     await localSaveWeightEntries(weights);
+    await localSaveTargetHistory(targets);
+    await localSaveAllWorkouts(workouts);
     await localSetHydratedUserId(userId);
+    if (profile?.onboardingComplete) {
+      const { backfillTargetHistoryIfNeeded } = await import(
+        './targetHistoryService'
+      );
+      await backfillTargetHistoryIfNeeded(profile);
+    }
     void import('./widgetSnapshot')
       .then(mod => mod.refreshHomeWidget())
       .catch(() => undefined);
