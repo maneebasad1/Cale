@@ -1,6 +1,7 @@
 import type { CalorieEntry, MealReminders, UserProfile } from '../types';
 import { DEFAULT_MEAL_REMINDERS, MEAL_REMINDER_MEALS } from '../types';
 import { isAnyMealReminderEnabled, resolveMealReminders } from '../utils/mealReminders';
+import { isWorkoutReminderEnabled, resolveWorkoutReminder } from '../utils/workoutReminders';
 import type { FoodItem } from '../types/food';
 import type { TargetSnapshot } from '../types/targetHistory';
 import type { WeightEntry } from '../types/weight';
@@ -26,6 +27,7 @@ export interface ProfileRow {
   reminder_enabled: boolean | null;
   reminder_time_minutes: number | null;
   meal_reminders: UserProfile['mealReminders'] | null;
+  workout_reminder: UserProfile['workoutReminder'] | null;
   last_weight_prompt_date: string | null;
 }
 
@@ -99,6 +101,7 @@ export function profileFromRow(row: ProfileRow): UserProfile {
     reminderEnabled: row.reminder_enabled ?? undefined,
     reminderTimeMinutes: row.reminder_time_minutes ?? undefined,
     mealReminders: row.meal_reminders ?? undefined,
+    workoutReminder: row.workout_reminder ?? undefined,
     lastWeightPromptDate: row.last_weight_prompt_date ?? undefined,
   };
 }
@@ -127,12 +130,14 @@ export function profileToRow(userId: string, profile: UserProfile): ProfileRow {
     weight_unit: profile.weightUnit,
     height_unit: profile.heightUnit,
     onboarding_complete: profile.onboardingComplete,
-    reminder_enabled: isAnyMealReminderEnabled(profile),
+    reminder_enabled:
+      isAnyMealReminderEnabled(profile) || isWorkoutReminderEnabled(profile),
     reminder_time_minutes:
       mealReminders?.dinner.timeMinutes ??
       profile.reminderTimeMinutes ??
       DEFAULT_MEAL_REMINDERS.dinner.timeMinutes,
     meal_reminders: mealReminders,
+    workout_reminder: resolveWorkoutReminder(profile),
     last_weight_prompt_date: profile.lastWeightPromptDate ?? null,
   };
 }

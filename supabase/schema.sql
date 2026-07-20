@@ -135,8 +135,8 @@ $$;
 
 grant execute on function public.delete_own_account() to authenticated;
 
--- If you already deployed an older schema, run supabase/backfill_target_history.sql
--- in the SQL Editor (schema additions + target_history backfill for existing users).
+-- alter table public.profiles add column if not exists maintenance_is_custom boolean not null default false;
+-- alter table public.profiles add column if not exists workout_reminder jsonb;
 
 -- Target history snapshots (for evaluating past days against the target active then)
 create table if not exists public.target_history (

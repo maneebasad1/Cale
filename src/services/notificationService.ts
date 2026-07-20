@@ -13,10 +13,19 @@ import {
   notificationIdForMeal,
   resolveMealReminders,
 } from '../utils/mealReminders';
+import {
+  notificationIdForWorkout,
+  resolveWorkoutReminder,
+  workoutReminderBody,
+} from '../utils/workoutReminders';
+import { formatDateKey } from '../utils/date';
 import { getTodayLog } from './storage';
+import { getWorkoutsForDate } from './workoutService';
 
 const CHANNEL_ID = 'calo-daily-reminder';
+const WORKOUT_CHANNEL_ID = 'calo-workout-reminder';
 const TEST_NOTIFICATION_ID = 'test-notification';
+const TEST_WORKOUT_NOTIFICATION_ID = 'test-workout-notification';
 
 /** @deprecated Use DEFAULT_MEAL_REMINDERS.dinner.timeMinutes */
 export const DEFAULT_REMINDER_MINUTES = 19 * 60;
@@ -47,6 +56,11 @@ async function ensureChannel(): Promise<void> {
     await notifee.createChannel({
       id: CHANNEL_ID,
       name: 'Meal reminders',
+      importance: AndroidImportance.DEFAULT,
+    });
+    await notifee.createChannel({
+      id: WORKOUT_CHANNEL_ID,
+      name: 'Workout reminders',
       importance: AndroidImportance.DEFAULT,
     });
   }
@@ -85,6 +99,38 @@ export async function cancelAllMealReminders(): Promise<void> {
     cancelMealReminder('lunch'),
     cancelMealReminder('dinner'),
   ]);
+}
+
+export async function cancelWorkoutReminder(): Promise<void> {
+  await notifee.cancelNotification(notificationIdForWorkout());
+}
+
+export async function scheduleWorkoutReminder(
+  minutesFromMidnight: number,
+): Promise<void> {
+  await ensureChannel();
+  const notificationId = notificationIdForWorkout();
+  await notifee.cancelNotification(notificationId);
+
+  const triggerDate = getNextTriggerDate(minutesFromMidnight);
+  const trigger: TimestampTrigger = {
+    type: TriggerType.TIMESTAMP,
+    timestamp: triggerDate.getTime(),
+    repeatFrequency: RepeatFrequency.DAILY,
+  };
+
+  await notifee.createTriggerNotification(
+    {
+      id: notificationId,
+      title: 'CALE',
+      body: workoutReminderBody(),
+      android: {
+        channelId: WORKOUT_CHANNEL_ID,
+        pressAction: { id: 'default' },
+      },
+    },
+    trigger,
+  );
 }
 
 export async function scheduleMealReminder(
@@ -140,7 +186,59 @@ export async function sendTestNotification(
   return { error: null };
 }
 
+export async function sendTestWorkoutNotification(): Promise<{
+  error: string | null;
+}> {
+  const granted = await requestNotificationPermission();
+  if (!granted) {
+    return {
+      error: 'Notification permission was denied. Enable notifications in Settings.',
+    };
+  }
+
+  await ensureChannel();
+  await notifee.displayNotification({
+    id: TEST_WORKOUT_NOTIFICATION_ID,
+    title: 'CALE',
+    body: workoutReminderBody(),
+    android: {
+      channelId: WORKOUT_CHANNEL_ID,
+      pressAction: { id: 'default' },
+    },
+  });
+
+  return { error: null };
+}
+
+async function syncWorkoutReminder(profile: UserProfile): Promise<void> {
+  const setting = resolveWorkoutReminder(profile);
+
+  if (!setting.enabled) {
+    await cancelWorkoutReminder();
+    return;
+  }
+
+  const granted = await requestNotificationPermission();
+  if (!granted) {
+    return;
+  }
+
+  const today = formatDateKey();
+  const workouts = await getWorkoutsForDate(today);
+  if (workouts.length > 0) {
+    await cancelWorkoutReminder();
+    return;
+  }
+
+  await scheduleWorkoutReminder(setting.timeMinutes);
+}
+
 export async function syncDailyReminder(profile: UserProfile): Promise<void> {
+  await syncMealReminders(profile);
+  await syncWorkoutReminder(profile);
+}
+
+async function syncMealReminders(profile: UserProfile): Promise<void> {
   const mealReminders = resolveMealReminders(profile);
   const hasAnyEnabled = (['breakfast', 'lunch', 'dinner'] as MealReminderMeal[]).some(
     meal => mealReminders[meal].enabled,
@@ -175,6 +273,19 @@ export async function syncDailyReminder(profile: UserProfile): Promise<void> {
 
 export async function onMealsLogged(profile: UserProfile): Promise<void> {
   await syncDailyReminder(profile);
+}
+
+export async function onWorkoutLogged(profile: UserProfile): Promise<void> {
+  await syncDailyReminder(profile);
+}
+
+export function formatWorkoutReminderSummary(
+  setting: ReturnType<typeof resolveWorkoutReminder>,
+): string {
+  if (!setting.enabled) {
+    return 'Workout reminder off';
+  }
+  return `Workout at ${minutesToLabel(setting.timeMinutes)}`;
 }
 
 export function formatMealRemindersSummary(mealReminders: MealReminders): string {

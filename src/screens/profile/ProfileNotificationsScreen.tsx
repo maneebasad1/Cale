@@ -9,32 +9,47 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Button } from '../../components/Button';
 import { MealReminderCard } from '../../components/profile/MealReminderCard';
+import { WorkoutReminderCard } from '../../components/profile/WorkoutReminderCard';
 import { Screen } from '../../components/Screen';
 import { colors, spacing, typography } from '../../constants/theme';
 import {
   formatMealRemindersSummary,
+  formatWorkoutReminderSummary,
   sendTestNotification,
+  sendTestWorkoutNotification,
   syncDailyReminder,
 } from '../../services/notificationService';
 import { getProfile, saveProfile } from '../../services/storage';
-import type { MealReminderMeal, MealReminders, UserProfile } from '../../types';
+import type {
+  MealReminderMeal,
+  MealReminders,
+  UserProfile,
+  WorkoutReminderSetting,
+} from '../../types';
 import {
   DEFAULT_MEAL_REMINDERS,
+  DEFAULT_WORKOUT_REMINDER,
   MEAL_REMINDER_MEALS,
 } from '../../types';
 import {
   isAnyMealReminderEnabled,
   resolveMealReminders,
 } from '../../utils/mealReminders';
+import { resolveWorkoutReminder } from '../../utils/workoutReminders';
 
 export function ProfileNotificationsScreen() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [mealReminders, setMealReminders] = useState<MealReminders>(
     DEFAULT_MEAL_REMINDERS,
   );
+  const [workoutReminder, setWorkoutReminder] = useState<WorkoutReminderSetting>(
+    DEFAULT_WORKOUT_REMINDER,
+  );
   const [activePickerMeal, setActivePickerMeal] =
     useState<MealReminderMeal | null>(null);
-  const [testing, setTesting] = useState(false);
+  const [showWorkoutPicker, setShowWorkoutPicker] = useState(false);
+  const [testingMeal, setTestingMeal] = useState(false);
+  const [testingWorkout, setTestingWorkout] = useState(false);
 
   const loadProfile = useCallback(async () => {
     const p = await getProfile();
@@ -43,6 +58,7 @@ export function ProfileNotificationsScreen() {
     }
     setProfile(p);
     setMealReminders(resolveMealReminders(p));
+    setWorkoutReminder(resolveWorkoutReminder(p));
   }, []);
 
   useFocusEffect(
@@ -69,27 +85,29 @@ export function ProfileNotificationsScreen() {
     const updated: UserProfile = {
       ...profile,
       mealReminders,
-      reminderEnabled: MEAL_REMINDER_MEALS.some(
-        meal => mealReminders[meal].enabled,
-      ),
+      workoutReminder,
+      reminderEnabled:
+        MEAL_REMINDER_MEALS.some(meal => mealReminders[meal].enabled) ||
+        workoutReminder.enabled,
     };
     await saveProfile(updated);
     await syncDailyReminder(updated);
     setProfile(updated);
-    Alert.alert(
-      'Notifications updated',
-      isAnyMealReminderEnabled(updated)
-        ? formatMealRemindersSummary(mealReminders)
-        : 'Meal reminders turned off.',
-    );
+
+    const mealSummary = isAnyMealReminderEnabled(updated)
+      ? formatMealRemindersSummary(mealReminders)
+      : 'Meal reminders off';
+    const workoutSummary = formatWorkoutReminderSummary(workoutReminder);
+
+    Alert.alert('Notifications updated', `${mealSummary}\n${workoutSummary}`);
   };
 
-  const handleTestNotification = async () => {
+  const handleTestMealNotification = async () => {
     const testMeal =
       MEAL_REMINDER_MEALS.find(meal => mealReminders[meal].enabled) ??
       'breakfast';
 
-    setTesting(true);
+    setTestingMeal(true);
     try {
       const { error } = await sendTestNotification(testMeal);
       if (error) {
@@ -101,7 +119,24 @@ export function ProfileNotificationsScreen() {
         'Check your notification tray — you should see a sample meal reminder.',
       );
     } finally {
-      setTesting(false);
+      setTestingMeal(false);
+    }
+  };
+
+  const handleTestWorkoutNotification = async () => {
+    setTestingWorkout(true);
+    try {
+      const { error } = await sendTestWorkoutNotification();
+      if (error) {
+        Alert.alert('Test failed', error);
+        return;
+      }
+      Alert.alert(
+        'Test sent',
+        'Check your notification tray — you should see a sample workout reminder.',
+      );
+    } finally {
+      setTestingWorkout(false);
     }
   };
 
@@ -143,6 +178,30 @@ export function ProfileNotificationsScreen() {
           />
         ))}
 
+        <Text style={[styles.sectionLabel, styles.sectionSpaced]}>
+          Workout reminder
+        </Text>
+        <Text style={styles.hint}>
+          Get a daily nudge to log workout calories. The reminder stops once you
+          log a workout for the day.
+        </Text>
+
+        <WorkoutReminderCard
+          setting={workoutReminder}
+          showPicker={showWorkoutPicker}
+          onToggle={() =>
+            setWorkoutReminder(current => ({
+              ...current,
+              enabled: !current.enabled,
+            }))
+          }
+          onOpenPicker={() => setShowWorkoutPicker(true)}
+          onTimeChange={minutes =>
+            setWorkoutReminder(current => ({ ...current, timeMinutes: minutes }))
+          }
+          onPickerDismiss={() => setShowWorkoutPicker(false)}
+        />
+
         <Button
           title="Save changes"
           onPress={handleSave}
@@ -150,16 +209,22 @@ export function ProfileNotificationsScreen() {
         />
 
         <View style={styles.testSection}>
-          <Text style={styles.testTitle}>Test notification</Text>
+          <Text style={styles.testTitle}>Test notifications</Text>
           <Text style={styles.testHint}>
-            Send a one-time sample reminder to confirm notifications work on
-            this device.
+            Send a one-time sample to confirm notifications work on this device.
           </Text>
           <Button
-            title="Send test notification"
+            title="Send meal test"
             variant="secondary"
-            onPress={handleTestNotification}
-            loading={testing}
+            onPress={handleTestMealNotification}
+            loading={testingMeal}
+            style={styles.testBtn}
+          />
+          <Button
+            title="Send workout test"
+            variant="secondary"
+            onPress={handleTestWorkoutNotification}
+            loading={testingWorkout}
           />
         </View>
       </ScrollView>
@@ -186,6 +251,9 @@ const styles = StyleSheet.create({
     color: colors.ink,
     marginBottom: spacing.sm,
   },
+  sectionSpaced: {
+    marginTop: spacing.lg,
+  },
   hint: {
     ...typography.caption,
     color: colors.stone,
@@ -209,5 +277,8 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.stone,
     marginBottom: spacing.md,
+  },
+  testBtn: {
+    marginBottom: spacing.sm,
   },
 });

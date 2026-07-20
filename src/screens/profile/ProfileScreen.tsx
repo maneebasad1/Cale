@@ -14,7 +14,7 @@ import { deleteAccount } from '../../services/accountService';
 import { getProfile } from '../../services/storage';
 import type { UserProfile } from '../../types';
 import { getUserDisplayName } from '../../utils/authUser';
-import { enabledMealReminderSummary } from '../../utils/mealReminders';
+import { notificationsSummary } from '../../utils/notificationSummary';
 
 type Nav = NativeStackNavigationProp<ProfileStackParamList, 'ProfileHome'>;
 
@@ -118,7 +118,7 @@ export function ProfileScreen() {
           <ProfileMenuRow
             icon="notifications-outline"
             title="Notifications"
-            subtitle={enabledMealReminderSummary(profile)}
+            subtitle={notificationsSummary(profile)}
             onPress={() => navigation.navigate('ProfileNotifications')}
             last
           />

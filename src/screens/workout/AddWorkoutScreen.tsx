@@ -20,6 +20,7 @@ import { UnitToggle } from '../../components/UnitToggle';
 import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import type { MainStackParamList } from '../../navigation/types';
 import { getProfile } from '../../services/storage';
+import { onWorkoutLogged } from '../../services/notificationService';
 import {
   addWorkoutEntry,
   getWorkoutsForDate,
@@ -27,7 +28,7 @@ import {
 } from '../../services/workoutService';
 import type { WorkoutEntryMode } from '../../types/workout';
 import { calculateWorkoutCalories } from '../../utils/workoutCalories';
-import { formatDisplayDate, isToday } from '../../utils/date';
+import { formatDisplayDate, formatDateKey, isToday } from '../../utils/date';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'AddWorkout'>;
 type Route = RouteProp<MainStackParamList, 'AddWorkout'>;
@@ -149,6 +150,14 @@ export function AddWorkoutScreen() {
     } else {
       await addWorkoutEntry(date, payload);
     }
+
+    if (date === formatDateKey()) {
+      const profile = await getProfile();
+      if (profile) {
+        await onWorkoutLogged(profile);
+      }
+    }
+
     navigation.goBack();
   }, [
     caloriesBurned,

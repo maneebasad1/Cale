@@ -52,6 +52,14 @@ export const DEFAULT_MEAL_REMINDERS: MealReminders = {
   dinner: { enabled: false, timeMinutes: 19 * 60 },
 };
 
+/** Same shape as meal reminders — single daily workout log nudge. */
+export type WorkoutReminderSetting = MealReminderSetting;
+
+export const DEFAULT_WORKOUT_REMINDER: WorkoutReminderSetting = {
+  enabled: false,
+  timeMinutes: 18 * 60,
+};
+
 export interface UserProfile {
   weightKg: number;
   heightCm: number;
@@ -74,6 +82,7 @@ export interface UserProfile {
   /** @deprecated Use mealReminders instead */
   reminderTimeMinutes?: number;
   mealReminders?: MealReminders;
+  workoutReminder?: WorkoutReminderSetting;
   lastWeightPromptDate?: string;
 }
 
