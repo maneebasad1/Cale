@@ -44,6 +44,8 @@ export type IconName =
   | 'leaf-outline'
   | 'mail-outline'
   | 'lock-closed-outline'
+  | 'eye-outline'
+  | 'eye-off-outline'
   | 'logo-google'
   | 'cloud-upload-outline';
 

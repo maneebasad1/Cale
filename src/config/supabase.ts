@@ -14,6 +14,23 @@ export const GOOGLE_WEB_CLIENT_ID =
 export const GOOGLE_IOS_CLIENT_ID =
   '337201354722-kd91j1j46f6t7ug4hhqikv60jbhnhk9e.apps.googleusercontent.com';
 
+/** Deep link used for email confirmation and password-reset redirects. */
+export const AUTH_REDIRECT_URL = 'cale://auth/callback';
+
+/**
+ * HTTPS page that receives Supabase email confirmation, then opens the app.
+ * Deploy web/auth-callback/ (see README there), then paste your URL here.
+ * Required when Supabase custom SMTP is not set up (default email template).
+ *
+ * Example: 'https://your-site.netlify.app'
+ */
+export const AUTH_WEB_REDIRECT_URL = '';
+
+/** Redirect target for sign-up / magic-link emails. */
+export function getEmailRedirectUrl(): string {
+  return AUTH_WEB_REDIRECT_URL.trim() || AUTH_REDIRECT_URL;
+}
+
 export function isSupabaseConfigured(): boolean {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 }

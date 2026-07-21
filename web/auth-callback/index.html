@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Opening CALE…</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        text-align: center;
+        padding: 48px 24px;
+        color: #1a1a1a;
+        background: #faf9f7;
+      }
+      h1 {
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+      p {
+        color: #666;
+        line-height: 1.5;
+      }
+      a {
+        color: #2d6a4f;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Opening CALE…</h1>
+    <p>Confirming your email. The app should open automatically.</p>
+    <p id="fallback" hidden>
+      If nothing happened,
+      <a id="manual" href="#">tap here to open CALE</a>.
+    </p>
+    <script>
+      (function () {
+        var hash = window.location.hash || '';
+        var query = window.location.search || '';
+        var deepLink = 'cale://auth/callback' + query + hash;
+        var manual = document.getElementById('manual');
+        manual.href = deepLink;
+        window.location.replace(deepLink);
+        setTimeout(function () {
+          document.getElementById('fallback').hidden = false;
+        }, 2500);
+      })();
+    </script>
+  </body>
+</html>

@@ -1,8 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,23 +9,45 @@ import {
 import { BrandLogo } from '../../components/BrandLogo';
 import { Button } from '../../components/Button';
 import { Icon } from '../../components/Icon';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { Screen } from '../../components/Screen';
 import { APP_TAGLINE } from '../../constants/branding';
 import { isGoogleSignInConfigured, isSupabaseConfigured } from '../../config/supabase';
 import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 
-type AuthMode = 'signIn' | 'signUp';
+type AuthStep = 'email' | 'otp';
+
+const OTP_LENGTH = 8;
+const RESEND_COOLDOWN_SEC = 60;
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
 
 export function AuthScreen() {
-  const { signIn, signUp, signInWithGoogle } = useAuth();
-  const [mode, setMode] = useState<AuthMode>('signIn');
+  const { sendEmailOtp, verifyEmailOtp, signInWithGoogle } = useAuth();
+  const [step, setStep] = useState<AuthStep>('email');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [otp, setOtp] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [googleError, setGoogleError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [resendSeconds, setResendSeconds] = useState(0);
+
+  useEffect(() => {
+    if (resendSeconds <= 0) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setResendSeconds((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [resendSeconds]);
 
   if (!isSupabaseConfigured()) {
     return (
@@ -50,209 +69,257 @@ export function AuthScreen() {
     );
   }
 
-  const handleSubmit = async () => {
-    setError(null);
+  const handleSendCode = async () => {
+    setEmailError(null);
     setInfo(null);
 
-    if (!email.trim() || !password) {
-      setError('Enter your email and password.');
-      return;
-    }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+    if (!isValidEmail(email)) {
+      setEmailError('Enter a valid email address.');
       return;
     }
 
     setLoading(true);
     try {
-      const result =
-        mode === 'signIn'
-          ? await signIn(email, password)
-          : await signUp(email, password);
-
+      const result = await sendEmailOtp(email);
       if (result.error) {
-        setError(result.error);
+        setEmailError(result.error);
         return;
       }
 
-      if (mode === 'signUp') {
-        setInfo('Account created. Check your email if confirmation is required.');
+      setStep('otp');
+      setOtp('');
+      setResendSeconds(RESEND_COOLDOWN_SEC);
+      setInfo(`We sent a sign-in code to ${email.trim()}.`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    setEmailError(null);
+    setInfo(null);
+
+    if (otp.trim().length !== OTP_LENGTH) {
+      setEmailError(`Enter the ${OTP_LENGTH}-digit code from your email.`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await verifyEmailOtp(email, otp);
+      if (result.error) {
+        setEmailError(result.error);
       }
     } finally {
       setLoading(false);
     }
   };
 
+  const handleResendCode = async () => {
+    if (resendSeconds > 0 || loading) {
+      return;
+    }
+
+    setEmailError(null);
+    setInfo(null);
+    setLoading(true);
+    try {
+      const result = await sendEmailOtp(email);
+      if (result.error) {
+        setEmailError(result.error);
+        return;
+      }
+
+      setResendSeconds(RESEND_COOLDOWN_SEC);
+      setInfo('A new code was sent to your email.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
-    setError(null);
+    setGoogleError(null);
     setInfo(null);
     setGoogleLoading(true);
     try {
       const result = await signInWithGoogle();
       if (result.error) {
-        setError(result.error);
+        setGoogleError(result.error);
       }
     } finally {
       setGoogleLoading(false);
     }
   };
 
-  const switchMode = (next: AuthMode) => {
-    setMode(next);
-    setError(null);
+  const handleChangeEmail = () => {
+    setStep('email');
+    setOtp('');
+    setEmailError(null);
     setInfo(null);
+    setResendSeconds(0);
   };
 
   return (
     <Screen>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
-          <View style={styles.hero}>
-            <BrandLogo size="lg" showTagline={false} />
-            <Text style={styles.tagline}>{APP_TAGLINE}</Text>
-          </View>
+      <KeyboardAwareScreen contentContainerStyle={styles.scroll}>
+        <View style={styles.hero}>
+          <BrandLogo size="lg" showTagline={false} />
+          <Text style={styles.tagline}>{APP_TAGLINE}</Text>
+        </View>
 
-          <View style={styles.modeToggle}>
-            <TouchableOpacity
-              style={[styles.modeOption, mode === 'signIn' && styles.modeActive]}
-              onPress={() => switchMode('signIn')}
-              accessibilityRole="button"
-              accessibilityState={{ selected: mode === 'signIn' }}>
-              <Text
-                style={[
-                  styles.modeLabel,
-                  mode === 'signIn' && styles.modeLabelActive,
-                ]}>
-                Sign in
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modeOption, mode === 'signUp' && styles.modeActive]}
-              onPress={() => switchMode('signUp')}
-              accessibilityRole="button"
-              accessibilityState={{ selected: mode === 'signUp' }}>
-              <Text
-                style={[
-                  styles.modeLabel,
-                  mode === 'signUp' && styles.modeLabelActive,
-                ]}>
-                Sign up
-              </Text>
-            </TouchableOpacity>
-          </View>
+        <Text style={styles.title}>
+          {step === 'email' ? 'Welcome to CALE' : 'Check your email'}
+        </Text>
+        <Text style={styles.subtitle}>
+          {step === 'email'
+            ? 'Enter your email and we’ll send you a one-time sign-in code. No password needed.'
+            : `Enter the ${OTP_LENGTH}-digit code we sent to ${email.trim()}.`}
+        </Text>
 
-          <Text style={styles.title}>
-            {mode === 'signIn' ? 'Welcome back' : 'Create your account'}
-          </Text>
-          <Text style={styles.subtitle}>
-            {mode === 'signIn'
-              ? 'Sign in to sync meals, goals, and progress across devices.'
-              : 'Save your foods and targets so they follow you everywhere.'}
-          </Text>
-
-          <View style={styles.form}>
-            <Text style={styles.label}>Email</Text>
-            <View style={styles.inputRow}>
-              <Icon name="mail-outline" size={18} color={colors.stone} />
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor={colors.stone}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                accessibilityLabel="Email"
-              />
-            </View>
-
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.inputRow}>
-              <Icon name="lock-closed-outline" size={18} color={colors.stone} />
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="At least 6 characters"
-                placeholderTextColor={colors.stone}
-                secureTextEntry
-                autoCapitalize="none"
-                accessibilityLabel="Password"
-              />
-            </View>
-
-            {error ? (
-              <View style={styles.messageRow}>
-                <Icon name="alert-circle-outline" size={16} color={colors.chili} />
-                <Text style={styles.error}>{error}</Text>
-              </View>
-            ) : null}
-            {info ? (
-              <View style={styles.messageRow}>
-                <Icon
-                  name="checkmark-circle-outline"
-                  size={16}
-                  color={colors.nori}
+        <View style={styles.form}>
+          {step === 'email' ? (
+            <>
+              <Text style={styles.label}>Email</Text>
+              <View style={styles.inputRow}>
+                <Icon name="mail-outline" size={18} color={colors.stone} />
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
+                  placeholderTextColor={colors.stone}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="email"
+                  textContentType="emailAddress"
+                  accessibilityLabel="Email"
                 />
-                <Text style={styles.info}>{info}</Text>
               </View>
-            ) : null}
+            </>
+          ) : (
+            <>
+              <Text style={styles.label}>Sign-in code</Text>
+              <View style={styles.inputRow}>
+                <Icon name="lock-closed-outline" size={18} color={colors.stone} />
+                <TextInput
+                  style={styles.otpInput}
+                  value={otp}
+                  onChangeText={(value) =>
+                    setOtp(value.replace(/\D/g, '').slice(0, OTP_LENGTH))
+                  }
+                  placeholder="00000000"
+                  placeholderTextColor={colors.stone}
+                  keyboardType="number-pad"
+                  autoComplete="one-time-code"
+                  textContentType="oneTimeCode"
+                  maxLength={OTP_LENGTH}
+                  accessibilityLabel="Sign-in code"
+                />
+              </View>
+              <TouchableOpacity
+                onPress={handleChangeEmail}
+                style={styles.changeEmailBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Use a different email">
+                <Text style={styles.changeEmailText}>Use a different email</Text>
+              </TouchableOpacity>
+            </>
+          )}
 
-            <Button
-              title={mode === 'signIn' ? 'Sign in' : 'Create account'}
-              onPress={handleSubmit}
-              loading={loading}
-              style={styles.submitBtn}
-            />
+          {emailError ? (
+            <View style={styles.messageRow}>
+              <Icon name="alert-circle-outline" size={16} color={colors.chili} />
+              <Text style={styles.error}>{emailError}</Text>
+            </View>
+          ) : null}
+          {info ? (
+            <View style={styles.messageRow}>
+              <Icon
+                name="checkmark-circle-outline"
+                size={16}
+                color={colors.nori}
+              />
+              <Text style={styles.info}>{info}</Text>
+            </View>
+          ) : null}
 
-            {isGoogleSignInConfigured() && (
-              <>
-                <View style={styles.dividerRow}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>or</Text>
-                  <View style={styles.dividerLine} />
+          <Button
+            title={step === 'email' ? 'Continue' : 'Verify code'}
+            onPress={step === 'email' ? handleSendCode : handleVerifyCode}
+            loading={loading}
+            style={styles.submitBtn}
+          />
+
+          {step === 'otp' ? (
+            <TouchableOpacity
+              onPress={handleResendCode}
+              disabled={resendSeconds > 0 || loading}
+              style={styles.resendBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Resend code">
+              <Text
+                style={[
+                  styles.resendText,
+                  (resendSeconds > 0 || loading) && styles.resendDisabled,
+                ]}>
+                {resendSeconds > 0
+                  ? `Resend code in ${resendSeconds}s`
+                  : 'Resend code'}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {isGoogleSignInConfigured() && step === 'email' ? (
+            <>
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+              {googleError ? (
+                <View style={styles.messageRow}>
+                  <Icon
+                    name="alert-circle-outline"
+                    size={16}
+                    color={colors.chili}
+                  />
+                  <Text style={styles.error}>{googleError}</Text>
                 </View>
-                <TouchableOpacity
-                  style={[
-                    styles.googleBtn,
-                    (loading || googleLoading) && styles.googleDisabled,
-                  ]}
-                  onPress={handleGoogleSignIn}
-                  disabled={loading || googleLoading}
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Continue with Google">
-                  {googleLoading ? (
-                    <Text style={styles.googleText}>Connecting…</Text>
-                  ) : (
-                    <>
-                      <Icon name="logo-google" size={18} color={colors.ink} />
-                      <Text style={styles.googleText}>Continue with Google</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+              ) : null}
+              <TouchableOpacity
+                style={[
+                  styles.googleBtn,
+                  (loading || googleLoading) && styles.googleDisabled,
+                ]}
+                onPress={handleGoogleSignIn}
+                disabled={loading || googleLoading}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Continue with Google">
+                {googleLoading ? (
+                  <Text style={styles.googleText}>Connecting…</Text>
+                ) : (
+                  <>
+                    <Icon name="logo-google" size={18} color={colors.ink} />
+                    <Text style={styles.googleText}>Continue with Google</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </>
+          ) : null}
+        </View>
+      </KeyboardAwareScreen>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
   scroll: {
     flexGrow: 1,
     padding: spacing.lg,
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl * 2,
   },
   centered: {
     flex: 1,
@@ -269,29 +336,6 @@ const styles = StyleSheet.create({
     color: colors.stone,
     marginTop: spacing.md,
     textAlign: 'center',
-  },
-  modeToggle: {
-    flexDirection: 'row',
-    backgroundColor: colors.border,
-    borderRadius: radii.sm,
-    padding: 3,
-    marginBottom: spacing.lg,
-  },
-  modeOption: {
-    flex: 1,
-    paddingVertical: spacing.sm + 2,
-    alignItems: 'center',
-    borderRadius: 6,
-  },
-  modeActive: {
-    backgroundColor: colors.surface,
-  },
-  modeLabel: {
-    ...typography.label,
-    color: colors.stone,
-  },
-  modeLabelActive: {
-    color: colors.nori,
   },
   title: {
     fontFamily: fonts.displayBold,
@@ -337,6 +381,25 @@ const styles = StyleSheet.create({
     color: colors.ink,
     paddingVertical: spacing.md,
   },
+  otpInput: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 24,
+    lineHeight: 30,
+    letterSpacing: 4,
+    color: colors.ink,
+    paddingVertical: spacing.md,
+  },
+  changeEmailBtn: {
+    alignSelf: 'flex-start',
+    marginTop: -spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  changeEmailText: {
+    ...typography.caption,
+    color: colors.nori,
+    fontFamily: fonts.bodyMedium,
+  },
   messageRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -355,6 +418,18 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     marginTop: spacing.xs,
+  },
+  resendBtn: {
+    alignItems: 'center',
+    marginTop: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  resendText: {
+    ...typography.label,
+    color: colors.nori,
+  },
+  resendDisabled: {
+    color: colors.stone,
   },
   dividerRow: {
     flexDirection: 'row',

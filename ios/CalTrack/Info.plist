@@ -34,6 +34,14 @@
 				<string>com.googleusercontent.apps.337201354722-kd91j1j46f6t7ug4hhqikv60jbhnhk9e</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>cale</string>
+			</array>
+		</dict>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>

@@ -17,6 +17,7 @@ import {
   getCachedAuthUser,
   saveCachedAuthUser,
 } from '../services/authCache';
+import { subscribeToAuthDeepLinks } from '../services/authDeepLink';
 import { signInWithGoogleNative, signOutGoogle } from '../services/googleAuth';
 import { localIsEmpty, resetLocalEntityStore } from '../services/localStore';
 import { withTimeout } from '../utils/networkTimeout';
@@ -28,8 +29,11 @@ interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
   authLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+  sendEmailOtp: (email: string) => Promise<{ error: string | null }>;
+  verifyEmailOtp: (
+    email: string,
+    token: string,
+  ) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
@@ -39,8 +43,8 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   isAuthenticated: false,
   authLoading: true,
-  signIn: async () => ({ error: null }),
-  signUp: async () => ({ error: null }),
+  sendEmailOtp: async () => ({ error: null }),
+  verifyEmailOtp: async () => ({ error: null }),
   signInWithGoogle: async () => ({ error: null }),
   signOut: async () => {},
 });
@@ -125,7 +129,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Token refresh failed offline — keep the user signed in locally.
       if (event === 'SIGNED_OUT' && lastUserIdRef.current) {
         setAuthLoading(false);
         return;
@@ -163,26 +166,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const appStateSub = AppState.addEventListener('change', onAppStateChange);
+    const unsubscribeDeepLinks = subscribeToAuthDeepLinks();
 
     return () => {
       listener.subscription.unsubscribe();
       supabase.auth.stopAutoRefresh();
       appStateSub.remove();
+      unsubscribeDeepLinks();
     };
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await getSupabase().auth.signInWithPassword({
+  const sendEmailOtp = useCallback(async (email: string) => {
+    const { error } = await getSupabase().auth.signInWithOtp({
       email: email.trim(),
-      password,
+      options: {
+        shouldCreateUser: true,
+      },
     });
     return { error: error?.message ?? null };
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    const { error } = await getSupabase().auth.signUp({
+  const verifyEmailOtp = useCallback(async (email: string, token: string) => {
+    const { error } = await getSupabase().auth.verifyOtp({
       email: email.trim(),
-      password,
+      token: token.trim(),
+      type: 'email',
     });
     return { error: error?.message ?? null };
   }, []);
@@ -211,12 +219,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isAuthenticated,
       authLoading,
-      signIn,
-      signUp,
+      sendEmailOtp,
+      verifyEmailOtp,
       signInWithGoogle,
       signOut,
     }),
-    [authLoading, isAuthenticated, session, signIn, signInWithGoogle, signOut, signUp, user],
+    [
+      authLoading,
+      isAuthenticated,
+      sendEmailOtp,
+      session,
+      signInWithGoogle,
+      signOut,
+      user,
+      verifyEmailOtp,
+    ],
   );
 
   return (

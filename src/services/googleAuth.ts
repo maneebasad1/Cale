@@ -64,9 +64,21 @@ export async function signInWithGoogleNative(): Promise<{
     if (code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
       return { error: 'Google Play Services is not available.' };
     }
+    if (code === '10') {
+      return {
+        error:
+          'Google Sign-In is not configured for this app build. Add the correct SHA-1 fingerprint and package name (com.cale) in Google Cloud Console.',
+      };
+    }
 
     const message =
       error instanceof Error ? error.message : 'Google sign-in failed.';
+    if (message.includes('DEVELOPER_ERROR')) {
+      return {
+        error:
+          'Google Sign-In is not configured for this app build. Add the correct SHA-1 fingerprint and package name (com.cale) in Google Cloud Console.',
+      };
+    }
     return { error: message };
   }
 }

@@ -40,6 +40,8 @@ Copy the **Client ID** → `GOOGLE_IOS_CLIENT_ID` in `src/config/supabase.ts`
   ```
   Copy the **SHA-1** line into Google Cloud.
 
+For **Play Store / release** builds, also add the SHA-1 from your release keystore (see [AUTH_SETUP.md](./AUTH_SETUP.md)). Without it, production installs show `DEVELOPER_ERROR`.
+
 ---
 
 ## 2. Supabase Dashboard
