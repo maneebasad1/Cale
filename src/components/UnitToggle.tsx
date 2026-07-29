@@ -7,9 +7,16 @@ import {
   ViewStyle,
 } from 'react-native';
 import { colors, radii, spacing, typography } from '../constants/theme';
+import { Icon, type IconName } from './Icon';
+
+interface UnitToggleOption<T extends string> {
+  value: T;
+  label: string;
+  icon?: IconName;
+}
 
 interface UnitToggleProps<T extends string> {
-  options: { value: T; label: string }[];
+  options: UnitToggleOption<T>[];
   value: T;
   onChange: (value: T) => void;
   style?: ViewStyle;
@@ -33,9 +40,18 @@ export function UnitToggle<T extends string>({
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityState={{ selected }}>
-            <Text style={[styles.label, selected && styles.labelSelected]}>
-              {option.label}
-            </Text>
+            <View style={styles.optionContent}>
+              {option.icon ? (
+                <Icon
+                  name={option.icon}
+                  size={14}
+                  color={selected ? colors.primary : colors.textSecondary}
+                />
+              ) : null}
+              <Text style={[styles.label, selected && styles.labelSelected]}>
+                {option.label}
+              </Text>
+            </View>
           </TouchableOpacity>
         );
       })}
@@ -55,6 +71,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     alignItems: 'center',
     borderRadius: 6,
+  },
+  optionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   optionSelected: {
     backgroundColor: colors.surface,

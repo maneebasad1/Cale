@@ -23,6 +23,22 @@ import { localIsEmpty, resetLocalEntityStore } from '../services/localStore';
 import { withTimeout } from '../utils/networkTimeout';
 
 const SESSION_INIT_TIMEOUT_MS = 4_000;
+/** Match Supabase SMTP “minimum interval per user” (default 60s). */
+const OTP_SEND_COOLDOWN_MS = 60_000;
+
+const lastOtpSentAtByEmail = new Map<string, number>();
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function otpCooldownRemainingMs(email: string): number {
+  const lastSentAt = lastOtpSentAtByEmail.get(normalizeEmail(email));
+  if (!lastSentAt) {
+    return 0;
+  }
+  return Math.max(0, OTP_SEND_COOLDOWN_MS - (Date.now() - lastSentAt));
+}
 
 interface AuthContextValue {
   session: Session | null;
@@ -177,22 +193,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const sendEmailOtp = useCallback(async (email: string) => {
+    const normalizedEmail = normalizeEmail(email);
+    const cooldownMs = otpCooldownRemainingMs(normalizedEmail);
+    if (cooldownMs > 0) {
+      const seconds = Math.ceil(cooldownMs / 1000);
+      return {
+        error: `Please wait ${seconds}s before requesting another code.`,
+      };
+    }
+
     const { error } = await getSupabase().auth.signInWithOtp({
-      email: email.trim(),
+      email: normalizedEmail,
       options: {
         shouldCreateUser: true,
       },
     });
+
+    if (!error) {
+      lastOtpSentAtByEmail.set(normalizeEmail(email), Date.now());
+    }
+
     return { error: error?.message ?? null };
   }, []);
 
   const verifyEmailOtp = useCallback(async (email: string, token: string) => {
+    const normalizedEmail = normalizeEmail(email);
+    const cleanToken = token.replace(/\D/g, '');
+
     const { error } = await getSupabase().auth.verifyOtp({
-      email: email.trim(),
-      token: token.trim(),
+      email: normalizedEmail,
+      token: cleanToken,
       type: 'email',
     });
-    return { error: error?.message ?? null };
+
+    if (!error) {
+      return { error: null };
+    }
+
+    const message = error.message.toLowerCase();
+    if (
+      message.includes('expired') ||
+      message.includes('invalid') ||
+      message.includes('token') ||
+      error.status === 403
+    ) {
+      return {
+        error:
+          'Invalid or expired code. Tap “Resend code” and enter the newest email only.',
+      };
+    }
+
+    return { error: error.message };
   }, []);
 
   const signInWithGoogle = useCallback(async () => {

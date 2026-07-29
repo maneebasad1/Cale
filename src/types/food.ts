@@ -33,7 +33,7 @@ export const FOOD_REGION_LABELS: Record<FoodRegion, string> = {
   general: 'General',
 };
 
-export type EntryMode = 'food' | 'custom';
+export type EntryMode = 'food' | 'custom' | 'describe';
 
 export interface EntryInput {
   mealType: import('./index').MealType;

@@ -11,4 +11,5 @@ export const LOCAL_KEYS = {
   hydratedUserId: '@caltrack/hydrated-user-id',
   /** One-time client backfill for target history start dates (v1). */
   targetHistoryBackfillV1: '@caltrack/target-history-backfill-v1',
+  aiEstimateUsage: '@caltrack/ai-estimate-usage',
 } as const;

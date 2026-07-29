@@ -38,6 +38,8 @@ export type IconName =
   | 'book-outline'
   | 'search-outline'
   | 'chevron-forward'
+  | 'chevron-down-outline'
+  | 'chevron-up-outline'
   | 'close'
   | 'time-outline'
   | 'alert-circle-outline'
@@ -47,7 +49,8 @@ export type IconName =
   | 'eye-outline'
   | 'eye-off-outline'
   | 'logo-google'
-  | 'cloud-upload-outline';
+  | 'cloud-upload-outline'
+  | 'sparkles-outline';
 
 const TAB_ICONS: Record<
   'home' | 'calendar' | 'person',
