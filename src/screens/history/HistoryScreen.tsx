@@ -31,13 +31,10 @@ import {
   getTotalCalories,
 } from '../../services/storage';
 import { ensureTargetHistorySeeded, getTargetHistory } from '../../services/targetHistoryService';
-import { getAllWorkouts } from '../../services/workoutService';
 import type { DailyLog, UserProfile } from '../../types';
 import type { TargetSnapshot } from '../../types/targetHistory';
-import type { WorkoutEntry } from '../../types/workout';
 import { getPeriodSummary, getTrailingDates } from '../../utils/calorieStats';
 import { getTargetForDate } from '../../utils/targetHistory';
-import { getTotalWorkoutCalories } from '../../utils/workoutCalories';
 import {
   formatDateKey,
   getMonthStart,
@@ -49,7 +46,6 @@ type MarkedDates = Record<
   {
     marked?: boolean;
     dotColor?: string;
-    hasWorkout?: boolean;
     customStyles?: {
       container?: object;
       text?: object;
@@ -72,14 +68,12 @@ export function HistoryScreen() {
   const [summaryPeriod, setSummaryPeriod] = useState<SummaryPeriod>('week');
   const [logs, setLogs] = useState<Record<string, DailyLog>>({});
   const [targetSnapshots, setTargetSnapshots] = useState<TargetSnapshot[]>([]);
-  const [workoutDays, setWorkoutDays] = useState<Record<string, WorkoutEntry[]>>({});
 
   const loadData = useCallback(async () => {
-    const [allLogs, userProfile, snapshotsRaw, allWorkouts] = await Promise.all([
+    const [allLogs, userProfile, snapshotsRaw] = await Promise.all([
       getAllLogs(),
       getProfile(),
       getTargetHistory(),
-      getAllWorkouts(),
     ]);
     const snapshots =
       userProfile && !snapshotsRaw.length
@@ -88,7 +82,6 @@ export function HistoryScreen() {
     setProfile(userProfile);
     setLogs(allLogs);
     setTargetSnapshots(snapshots);
-    setWorkoutDays(allWorkouts);
 
     const fallback = userProfile
       ? {
@@ -112,7 +105,6 @@ export function HistoryScreen() {
       marks[log.date] = {
         marked: true,
         dotColor: progressColor(tone),
-        hasWorkout: Boolean(allWorkouts[log.date]?.length),
         customStyles: {
           container: {
             backgroundColor: progressMute(tone),
@@ -124,22 +116,6 @@ export function HistoryScreen() {
           },
         },
       };
-    });
-
-    Object.keys(allWorkouts).forEach(date => {
-      if (!marks[date]) {
-        marks[date] = {
-          hasWorkout: true,
-          customStyles: {
-            container: {
-              borderRadius: radii.sm,
-            },
-            text: {
-              color: colors.text,
-            },
-          },
-        };
-      }
     });
 
     marks[today] = {
@@ -185,14 +161,6 @@ export function HistoryScreen() {
     [targetFallback, targetSnapshots],
   );
 
-  const workoutCaloriesByDate = useMemo(() => {
-    const totals: Record<string, number> = {};
-    Object.entries(workoutDays).forEach(([date, entries]) => {
-      totals[date] = getTotalWorkoutCalories(entries);
-    });
-    return totals;
-  }, [workoutDays]);
-
   const periodSummary = useMemo(() => {
     const endDate = today;
     const startDate =
@@ -205,7 +173,6 @@ export function HistoryScreen() {
       endDate,
       getTargetForDay,
       goalType,
-      workoutCaloriesByDate,
     );
   }, [
     getTargetForDay,
@@ -213,7 +180,6 @@ export function HistoryScreen() {
     logs,
     summaryPeriod,
     today,
-    workoutCaloriesByDate,
   ]);
 
   const handleDayPress = (day: DateData) => {
@@ -299,7 +265,6 @@ export function HistoryScreen() {
               periodLabel={
                 summaryPeriod === 'week' ? 'Last 7 days' : 'This month'
               }
-              workoutDays={workoutDays}
             />
           </>
         ) : (
@@ -370,9 +335,6 @@ export function HistoryScreen() {
                         {total}
                       </Text>
                     )}
-                    {customMarking?.hasWorkout && !isFuture ? (
-                      <Text style={styles.workoutDot}>⚡</Text>
-                    ) : null}
                   </TouchableOpacity>
                 );
               }}
@@ -597,11 +559,5 @@ const styles = StyleSheet.create({
   },
   dayTotalDisabled: {
     color: colors.border,
-  },
-  workoutDot: {
-    fontSize: 8,
-    lineHeight: 10,
-    marginTop: 1,
-    opacity: 0.7,
   },
 });

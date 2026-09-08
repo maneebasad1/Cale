@@ -24,6 +24,7 @@ import {
   resetLocalEntityStore,
 } from './localStore';
 import { getCachedAuthUser } from './authCache';
+import { resolveHydrateLocalPolicy } from './hydratePolicy';
 import * as db from './supabaseData';
 import { withTimeout } from '../utils/networkTimeout';
 import {
@@ -163,7 +164,7 @@ async function processItem(item: SyncQueueItem): Promise<void> {
 
 /**
  * Pull remote → local for the current user when local is empty.
- * Clears leftover data from a previous account before hydrating.
+ * Guest / unclaimed local data is kept and claimed for this account.
  */
 export async function hydrateFromRemoteIfNeeded(): Promise<boolean> {
   const userId = await resolveLocalUserId();
@@ -173,16 +174,19 @@ export async function hydrateFromRemoteIfNeeded(): Promise<boolean> {
 
   const hydratedFor = await localGetHydratedUserId();
   const empty = await localIsEmpty();
+  const policy = resolveHydrateLocalPolicy(hydratedFor, userId, empty);
 
-  // Same user already has local data — local-first, do not overwrite.
-  if (hydratedFor === userId && !empty) {
+  if (policy === 'skip') {
     return false;
   }
 
-  // Leftover cache from another account (or pre-fix orphaned data).
-  if (hydratedFor && hydratedFor !== userId) {
-    await resetLocalEntityStore();
-  } else if (!hydratedFor && !empty) {
+  // Guest / unclaimed local data: keep it and attach to this account.
+  if (policy === 'claim-local') {
+    await localSetHydratedUserId(userId);
+    return false;
+  }
+
+  if (policy === 'reset-and-pull') {
     await resetLocalEntityStore();
   }
 

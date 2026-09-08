@@ -1,5 +1,5 @@
 import type { DailyLog } from '../../types';
-import { getCurrentStreak } from '../streak';
+import { countLoggedDays, getCurrentStreak } from '../streak';
 
 describe('getCurrentStreak', () => {
   const logs: Record<string, DailyLog> = {
@@ -27,5 +27,15 @@ describe('getCurrentStreak', () => {
 
   it('returns zero when no recent entries exist', () => {
     expect(getCurrentStreak({}, '2026-07-04')).toBe(0);
+  });
+
+  it('counts unique days that have at least one entry', () => {
+    expect(countLoggedDays(logs)).toBe(3);
+    expect(
+      countLoggedDays({
+        ...logs,
+        '2026-07-05': { date: '2026-07-05', entries: [] },
+      }),
+    ).toBe(3);
   });
 });

@@ -60,10 +60,6 @@ export type MainStackParamList = {
       }
     | undefined;
   MyFoods: undefined;
-  AddWorkout: {
-    date: string;
-    entryId?: string;
-  };
 };
 
 export type MainTabParamList = {
@@ -86,7 +82,7 @@ export type HistoryStackParamList = {
 };
 
 export type RootStackParamList = {
-  Auth: undefined;
+  Auth: { intent?: 'welcome' | 'save' } | undefined;
   Onboarding: undefined;
   Main: import('@react-navigation/native').NavigatorScreenParams<MainStackParamList> | undefined;
 };

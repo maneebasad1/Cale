@@ -1,6 +1,7 @@
 import {
   calculateCalorieAdjustment,
   calculateDailyTarget,
+  getOnboardingCaloriePreview,
   resolveProfileTargets,
 } from '../bmr';
 
@@ -20,5 +21,13 @@ describe('bmr utils', () => {
     expect(adjustment).toBeLessThan(0);
     const target = calculateDailyTarget(2200, adjustment, 'male', 'lose');
     expect(target).toBeLessThan(2200);
+  });
+
+  it('unlocks a calorie preview from weight, height, age, and gender', () => {
+    const preview = getOnboardingCaloriePreview(70, 175, 30, 'male');
+    expect(preview.bmr).toBe(1649);
+    expect(preview.typicalDaily).toBeGreaterThan(preview.bmr);
+    expect(preview.sedentaryDaily).toBeLessThan(preview.typicalDaily);
+    expect(preview.extraActiveDaily).toBeGreaterThan(preview.typicalDaily);
   });
 });

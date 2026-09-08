@@ -19,16 +19,16 @@ const AppContext = createContext<AppContextValue>({
 });
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { canUseApp } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!canUseApp) {
       setProfile(null);
       setOnboardingComplete(false);
     }
-  }, [isAuthenticated]);
+  }, [canUseApp]);
 
   const refreshProfile = useCallback(async () => {
     const localProfile = await getProfile();

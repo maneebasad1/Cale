@@ -6,14 +6,21 @@ import {
 import type { MainStackParamList, RootStackParamList } from '../navigation/types';
 import type { MealReminderMeal, MealType } from '../types';
 import { formatDateKey } from '../utils/date';
-import { notificationIdForWorkout } from '../utils/workoutReminders';
 import { MEAL_REMINDER_MEALS } from '../types';
 
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
-type NotificationTarget =
-  | { screen: 'AddEntry'; mealType?: MealType }
-  | { screen: 'AddWorkout' };
+export function navigateToAuth(intent: 'welcome' | 'save' = 'save'): void {
+  if (!navigationRef.isReady()) {
+    return;
+  }
+  navigationRef.navigate('Auth', { intent });
+}
+
+type NotificationTarget = {
+  screen: 'AddEntry';
+  mealType?: MealType;
+};
 
 let pendingTarget: NotificationTarget | null = null;
 
@@ -31,9 +38,6 @@ export function parseNotificationTarget(notification: {
   data?: Record<string, unknown>;
 }): NotificationTarget | null {
   const target = notification.data?.target;
-  if (target === 'AddWorkout') {
-    return { screen: 'AddWorkout' };
-  }
   if (target === 'AddEntry') {
     const meal = notification.data?.meal;
     if (
@@ -43,10 +47,6 @@ export function parseNotificationTarget(notification: {
       return { screen: 'AddEntry', mealType: meal as MealType };
     }
     return { screen: 'AddEntry' };
-  }
-
-  if (notification.id === notificationIdForWorkout()) {
-    return { screen: 'AddWorkout' };
   }
 
   const meal = notification.id ? mealFromReminderId(notification.id) : null;
@@ -77,19 +77,6 @@ export function flushPendingNotificationNavigation(
   const today = formatDateKey();
   const target = pendingTarget;
   pendingTarget = null;
-
-  if (target.screen === 'AddWorkout') {
-    navigationRef.dispatch(
-      CommonActions.navigate({
-        name: 'Main',
-        params: {
-          screen: 'AddWorkout',
-          params: { date: today },
-        } satisfies NavigatorScreenParams<MainStackParamList>,
-      }),
-    );
-    return;
-  }
 
   navigationRef.dispatch(
     CommonActions.navigate({

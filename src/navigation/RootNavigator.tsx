@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { BrandLoader } from '../components/BrandLoader';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
+import { colors, fonts } from '../constants/theme';
 import { navigationRef } from '../navigation/navigationRef';
 import { AuthScreen } from '../screens/auth/AuthScreen';
 import {
@@ -11,27 +12,33 @@ import {
   registerNotificationNavigationHandlers,
   setNotificationNavigationReady,
 } from '../services/notificationNavigation';
+import { recordAppLaunch } from '../services/reviewPrompt';
 import { MainNavigator } from './MainNavigator';
 import { OnboardingNavigator } from './OnboardingNavigator';
 import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const GUEST_BOOTSTRAP_KEY = 'guest';
 
 export function RootNavigator() {
-  const { isAuthenticated, authLoading, user } = useAuth();
+  const { isAuthenticated, isGuest, canUseApp, authLoading, user } = useAuth();
   const { onboardingComplete, refreshProfile } = useApp();
-  /** User id whose profile bootstrap finished — null until first successful load. */
-  const [bootstrappedUserId, setBootstrappedUserId] = useState<string | null>(
-    null,
-  );
+  /** Session key whose profile bootstrap finished — null until first successful load. */
+  const [bootstrappedKey, setBootstrappedKey] = useState<string | null>(null);
+
+  const sessionKey = user?.id ?? (isGuest ? GUEST_BOOTSTRAP_KEY : null);
+
+  useEffect(() => {
+    void recordAppLaunch();
+  }, []);
 
   useEffect(() => {
     if (authLoading) {
       return;
     }
 
-    if (!isAuthenticated || !user) {
-      setBootstrappedUserId(null);
+    if (!sessionKey) {
+      setBootstrappedKey(null);
       return;
     }
 
@@ -40,14 +47,14 @@ export function RootNavigator() {
     void (async () => {
       await refreshProfile();
       if (!cancelled) {
-        setBootstrappedUserId(user.id);
+        setBootstrappedKey(sessionKey);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [authLoading, isAuthenticated, user?.id, refreshProfile]);
+  }, [authLoading, sessionKey, refreshProfile]);
 
   useEffect(() => {
     return registerNotificationNavigationHandlers();
@@ -55,21 +62,21 @@ export function RootNavigator() {
 
   useEffect(() => {
     setNotificationNavigationReady(
-      Boolean(bootstrappedUserId && onboardingComplete),
+      Boolean(bootstrappedKey && onboardingComplete),
     );
-  }, [bootstrappedUserId, onboardingComplete]);
+  }, [bootstrappedKey, onboardingComplete]);
 
   const handleNavigationReady = () => {
     void processInitialNotification().then(() => {
       setNotificationNavigationReady(
-        Boolean(bootstrappedUserId && onboardingComplete),
+        Boolean(bootstrappedKey && onboardingComplete),
       );
     });
   };
 
   // Keep loader up until this session's profile is ready (avoids onboarding flash).
   const awaitingProfile =
-    isAuthenticated && !!user && bootstrappedUserId !== user.id;
+    canUseApp && !!sessionKey && bootstrappedKey !== sessionKey;
 
   if (authLoading || awaitingProfile) {
     return <BrandLoader />;
@@ -80,12 +87,35 @@ export function RootNavigator() {
       ref={navigationRef}
       onReady={handleNavigationReady}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!isAuthenticated ? (
+        {!canUseApp ? (
           <Stack.Screen name="Auth" component={AuthScreen} />
-        ) : onboardingComplete ? (
-          <Stack.Screen name="Main" component={MainNavigator} />
         ) : (
-          <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
+          <>
+            {onboardingComplete ? (
+              <Stack.Screen name="Main" component={MainNavigator} />
+            ) : (
+              <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
+            )}
+            {isGuest && !isAuthenticated ? (
+              <Stack.Screen
+                name="Auth"
+                component={AuthScreen}
+                initialParams={{ intent: 'save' }}
+                options={{
+                  presentation: 'modal',
+                  headerShown: true,
+                  title: 'Save your progress',
+                  headerStyle: { backgroundColor: colors.surface },
+                  headerTintColor: colors.text,
+                  headerTitleStyle: {
+                    fontFamily: fonts.bodySemiBold,
+                    fontSize: 17,
+                  },
+                  headerShadowVisible: false,
+                }}
+              />
+            ) : null}
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

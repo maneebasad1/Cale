@@ -18,6 +18,7 @@ import {
   saveCachedAuthUser,
 } from '../services/authCache';
 import { subscribeToAuthDeepLinks } from '../services/authDeepLink';
+import { getGuestMode, setGuestMode } from '../services/guestMode';
 import { signInWithGoogleNative, signOutGoogle } from '../services/googleAuth';
 import { localIsEmpty, resetLocalEntityStore } from '../services/localStore';
 import { withTimeout } from '../utils/networkTimeout';
@@ -44,6 +45,8 @@ interface AuthContextValue {
   session: Session | null;
   user: User | null;
   isAuthenticated: boolean;
+  isGuest: boolean;
+  canUseApp: boolean;
   authLoading: boolean;
   sendEmailOtp: (email: string) => Promise<{ error: string | null }>;
   verifyEmailOtp: (
@@ -51,6 +54,7 @@ interface AuthContextValue {
     token: string,
   ) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null }>;
+  continueAsGuest: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -58,10 +62,13 @@ const AuthContext = createContext<AuthContextValue>({
   session: null,
   user: null,
   isAuthenticated: false,
+  isGuest: false,
+  canUseApp: false,
   authLoading: true,
   sendEmailOtp: async () => ({ error: null }),
   verifyEmailOtp: async () => ({ error: null }),
   signInWithGoogle: async () => ({ error: null }),
+  continueAsGuest: async () => {},
   signOut: async () => {},
 });
 
@@ -82,13 +89,28 @@ async function getSessionWithTimeout(): Promise<Session | null> {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [offlineUser, setOfflineUser] = useState<User | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const explicitSignOutRef = useRef(false);
   const lastUserIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
+    const restoreGuest = async (): Promise<boolean> => {
+      if (!(await getGuestMode())) {
+        return false;
+      }
+      lastUserIdRef.current = null;
+      setIsGuest(true);
       setAuthLoading(false);
+      return true;
+    };
+
+    if (!isSupabaseConfigured()) {
+      void restoreGuest().then(ok => {
+        if (!ok) {
+          setAuthLoading(false);
+        }
+      });
       return;
     }
 
@@ -104,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
       lastUserIdRef.current = cached.id;
+      setIsGuest(false);
       setOfflineUser(cachedAuthUserToUser(cached));
       setAuthLoading(false);
       return true;
@@ -113,8 +136,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       event: AuthChangeEvent,
       nextSession: Session | null,
     ) => {
-      const nextUserId = nextSession?.user?.id ?? null;
-
       if (nextSession?.user) {
         const signedInUserId = nextSession.user.id;
         if (
@@ -129,6 +150,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: signedInUserId,
           email: nextSession.user.email,
         });
+        await setGuestMode(false);
+        setIsGuest(false);
         setOfflineUser(null);
         setSession(nextSession);
         setAuthLoading(false);
@@ -139,6 +162,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         explicitSignOutRef.current = false;
         lastUserIdRef.current = null;
         await clearCachedAuthUser();
+        await setGuestMode(false);
+        setIsGuest(false);
         setOfflineUser(null);
         setSession(null);
         setAuthLoading(false);
@@ -154,7 +179,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      if (await restoreGuest()) {
+        return;
+      }
+
       lastUserIdRef.current = null;
+      setIsGuest(false);
       setOfflineUser(null);
       setSession(null);
       setAuthLoading(false);
@@ -250,34 +280,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return signInWithGoogleNative();
   }, []);
 
+  const continueAsGuest = useCallback(async () => {
+    await setGuestMode(true);
+    lastUserIdRef.current = null;
+    setIsGuest(true);
+  }, []);
+
   const signOut = useCallback(async () => {
     explicitSignOutRef.current = true;
     await signOutGoogle();
-    await getSupabase().auth.signOut();
+    if (isSupabaseConfigured()) {
+      await getSupabase().auth.signOut();
+    }
     await clearCachedAuthUser();
     await resetLocalEntityStore();
+    await setGuestMode(false);
     lastUserIdRef.current = null;
+    setIsGuest(false);
     setOfflineUser(null);
     setSession(null);
   }, []);
 
   const user = session?.user ?? offlineUser;
   const isAuthenticated = Boolean(user);
+  const canUseApp = isAuthenticated || isGuest;
 
   const value = useMemo(
     () => ({
       session,
       user,
       isAuthenticated,
+      isGuest,
+      canUseApp,
       authLoading,
       sendEmailOtp,
       verifyEmailOtp,
       signInWithGoogle,
+      continueAsGuest,
       signOut,
     }),
     [
       authLoading,
+      canUseApp,
+      continueAsGuest,
       isAuthenticated,
+      isGuest,
       sendEmailOtp,
       session,
       signInWithGoogle,

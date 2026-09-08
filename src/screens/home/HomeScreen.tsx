@@ -11,20 +11,19 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandLogo } from '../../components/BrandLogo';
 import { EntryList } from '../../components/EntryList';
-import { FabActionMenu } from '../../components/FabActionMenu';
+import { FabButton } from '../../components/FabButton';
 import { Icon } from '../../components/Icon';
 import { ProgressRing } from '../../components/ProgressRing';
 import { Screen } from '../../components/Screen';
+import { SaveProgressBanner } from '../../components/SaveProgressBanner';
 import { StreakBadge } from '../../components/StreakBadge';
 import { SyncStatusIndicator } from '../../components/SyncStatusIndicator';
 import { WeightCheckInBanner } from '../../components/WeightCheckInBanner';
-import { WorkoutList } from '../../components/WorkoutList';
 import { colors, radii, spacing, typography } from '../../constants/theme';
+import { useAuth } from '../../context/AuthContext';
 import { drainSyncQueue } from '../../services/sync';
 import { useAddEntryNavigation } from '../../hooks/useAddEntryNavigation';
-import { useAddWorkoutNavigation } from '../../hooks/useAddWorkoutNavigation';
 import { useMyFoodsNavigation } from '../../hooks/useMyFoodsNavigation';
-import { getWorkoutsForDate } from '../../services/workoutService';
 import {
   deleteEntry,
   getAllLogs,
@@ -38,39 +37,50 @@ import {
   shouldPromptWeightCheckIn,
 } from '../../services/weightService';
 import type { CalorieEntry, UserProfile } from '../../types';
-import type { WorkoutEntry } from '../../types/workout';
 import { getTrailingAverageCalories } from '../../utils/calorieStats';
-import { getTotalWorkoutCalories } from '../../utils/workoutCalories';
 import { formatDateKey, formatDisplayDate } from '../../utils/date';
 import { getCurrentStreak } from '../../utils/streak';
+import { navigateToAuth } from '../../navigation/navigationRef';
+import {
+  dismissSaveProgressBanner,
+  isSaveProgressBannerDismissed,
+} from '../../services/guestMode';
+import { maybeRequestInAppReview } from '../../services/reviewPrompt';
 
 export function HomeScreen() {
+  const { isGuest } = useAuth();
   const { openAddEntry } = useAddEntryNavigation();
-  const { openAddWorkout } = useAddWorkoutNavigation();
   const { openMyFoods } = useMyFoodsNavigation();
   const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [entries, setEntries] = useState<CalorieEntry[]>([]);
-  const [workouts, setWorkouts] = useState<WorkoutEntry[]>([]);
   const [streak, setStreak] = useState(0);
   const [weeklyAvg, setWeeklyAvg] = useState(0);
   const [showWeightPrompt, setShowWeightPrompt] = useState(false);
+  const [showSaveBanner, setShowSaveBanner] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
     const today = formatDateKey();
-    const [userProfile, log, logs, latestWeight, todayWorkouts] = await Promise.all([
+    const [userProfile, log, logs, latestWeight] = await Promise.all([
       getProfile(),
       getTodayLog(),
       getAllLogs(),
       getLatestWeightEntry(),
-      getWorkoutsForDate(today),
     ]);
     setProfile(userProfile);
     setEntries(log.entries);
-    setWorkouts(todayWorkouts);
     setStreak(getCurrentStreak(logs, today));
     setWeeklyAvg(getTrailingAverageCalories(logs, today));
+
+    const hasLoggedValue =
+      log.entries.length > 0 || getCurrentStreak(logs, today) > 0;
+    if (isGuest && hasLoggedValue) {
+      const dismissed = await isSaveProgressBannerDismissed();
+      setShowSaveBanner(!dismissed);
+    } else {
+      setShowSaveBanner(false);
+    }
 
     if (!userProfile) {
       setShowWeightPrompt(false);
@@ -82,7 +92,7 @@ export function HomeScreen() {
       !dismissedToday &&
         shouldPromptWeightCheckIn(latestWeight, today),
     );
-  }, []);
+  }, [isGuest]);
 
   useFocusEffect(
     useCallback(() => {
@@ -90,6 +100,10 @@ export function HomeScreen() {
       void import('../../services/widgetSnapshot').then(mod =>
         mod.refreshHomeWidget(),
       );
+      const timer = setTimeout(() => {
+        void maybeRequestInAppReview();
+      }, 1200);
+      return () => clearTimeout(timer);
     }, [loadData]),
   );
 
@@ -125,14 +139,12 @@ export function HomeScreen() {
     setShowWeightPrompt(false);
   };
 
-  const handleDeleteWorkout = async (entryId: string) => {
-    const { deleteWorkoutEntry } = await import('../../services/workoutService');
-    await deleteWorkoutEntry(formatDateKey(), entryId);
-    await loadData();
+  const handleDismissSaveBanner = async () => {
+    await dismissSaveProgressBanner();
+    setShowSaveBanner(false);
   };
 
   const total = getTotalCalories({ date: formatDateKey(), entries });
-  const burned = getTotalWorkoutCalories(workouts);
   const target = profile?.dailyTargetCalories ?? profile?.maintenanceCalories ?? 0;
   const fabOffset = 60 + spacing.lg * 2 + insets.bottom;
 
@@ -167,6 +179,13 @@ export function HomeScreen() {
 
         <StreakBadge streak={streak} />
 
+        {showSaveBanner ? (
+          <SaveProgressBanner
+            onPress={() => navigateToAuth('save')}
+            onDismiss={handleDismissSaveBanner}
+          />
+        ) : null}
+
         {showWeightPrompt && profile && (
           <WeightCheckInBanner
             weightUnit={profile.weightUnit}
@@ -176,11 +195,7 @@ export function HomeScreen() {
           />
         )}
 
-        <ProgressRing
-          consumed={total}
-          target={target}
-          caloriesBurned={burned}
-        />
+        <ProgressRing consumed={total} target={target} />
 
         <View style={styles.avgRow}>
           <Icon name="time-outline" size={16} color={colors.textSecondary} />
@@ -196,36 +211,9 @@ export function HomeScreen() {
           onDelete={handleDelete}
           iconActions
         />
-
-        {workouts.length > 0 ? (
-          <>
-            <Text style={styles.sectionTitle}>Workouts</Text>
-            <WorkoutList
-              entries={workouts}
-              onEdit={entry =>
-                openAddWorkout({ date: formatDateKey(), entryId: entry.id })
-              }
-              onDelete={handleDeleteWorkout}
-              iconActions
-            />
-          </>
-        ) : null}
       </ScrollView>
 
-      <FabActionMenu
-        actions={[
-          {
-            label: 'Add food',
-            icon: 'restaurant-outline',
-            onPress: () => openAddEntry({ date: formatDateKey() }),
-          },
-          {
-            label: 'Add workout',
-            icon: 'fitness-outline',
-            onPress: () => openAddWorkout({ date: formatDateKey() }),
-          },
-        ]}
-      />
+      <FabButton onPress={() => openAddEntry({ date: formatDateKey() })} />
     </Screen>
   );
 }

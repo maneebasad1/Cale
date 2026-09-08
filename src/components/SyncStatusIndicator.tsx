@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Icon } from './Icon';
+import { useAuth } from '../context/AuthContext';
 import { useSync } from '../context/SyncContext';
 import { colors, fonts, radii, spacing, typography } from '../constants/theme';
 
@@ -19,10 +20,11 @@ interface SyncStatusIndicatorProps {
 export function SyncStatusIndicator({
   variant = 'compact',
 }: SyncStatusIndicatorProps) {
+  const { isAuthenticated } = useAuth();
   const { snapshot, retrySync } = useSync();
   const [retrying, setRetrying] = useState(false);
 
-  if (snapshot.status === 'synced') {
+  if (!isAuthenticated || snapshot.status === 'synced') {
     return null;
   }
 

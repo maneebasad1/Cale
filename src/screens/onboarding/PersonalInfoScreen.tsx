@@ -4,12 +4,14 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { LabeledInput } from '../../components/LabeledInput';
 import { FormSection } from '../../components/onboarding/FormSection';
+import { OnboardingCaloriePreview } from '../../components/onboarding/OnboardingCaloriePreview';
 import { OnboardingFooter } from '../../components/onboarding/OnboardingFooter';
 import { OnboardingHeader } from '../../components/onboarding/OnboardingHeader';
 import { Screen } from '../../components/Screen';
 import { colors, radii, spacing, typography } from '../../constants/theme';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import type { Gender } from '../../types';
+import { getOnboardingCaloriePreview } from '../../utils/bmr';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'PersonalInfo'>;
 
@@ -18,13 +20,14 @@ export function PersonalInfoScreen({ route, navigation }: Props) {
   const [age, setAge] = useState('');
   const [gender, setGender] = useState<Gender | null>(null);
 
-  const isValid = () => {
-    const ageNum = parseInt(age, 10);
-    return ageNum > 0 && gender !== null;
-  };
+  const ageNum = parseInt(age, 10);
+  const preview =
+    ageNum > 0 && gender
+      ? getOnboardingCaloriePreview(weightKg, heightCm, ageNum, gender)
+      : null;
+  const isValid = () => Boolean(preview);
 
   const handleContinue = () => {
-    const ageNum = parseInt(age, 10);
     if (!ageNum || !gender) {
       return;
     }
@@ -53,7 +56,7 @@ export function PersonalInfoScreen({ route, navigation }: Props) {
         <OnboardingHeader
           step={2}
           title="A bit about you"
-          subtitle="Age and gender help us estimate your baseline metabolism."
+          subtitle="Age and gender unlock your calorie estimate."
         />
 
         <FormSection title="Age">
@@ -88,6 +91,14 @@ export function PersonalInfoScreen({ route, navigation }: Props) {
             ))}
           </View>
         </FormSection>
+
+        {preview ? (
+          <OnboardingCaloriePreview
+            calories={preview.typicalDaily}
+            caption="Your estimated daily burn"
+            hint={`At rest ${preview.bmr.toLocaleString()} · With activity ${preview.sedentaryDaily.toLocaleString()}–${preview.extraActiveDaily.toLocaleString()}`}
+          />
+        ) : null}
       </KeyboardAwareScreen>
     </Screen>
   );

@@ -11,7 +11,7 @@ import { colors, radii, spacing, typography } from '../constants/theme';
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'ghost';
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;
@@ -26,12 +26,15 @@ export function Button({
   style,
 }: ButtonProps) {
   const isPrimary = variant === 'primary';
+  const isGhost = variant === 'ghost';
 
   return (
     <TouchableOpacity
       style={[
         styles.button,
-        isPrimary ? styles.primary : styles.secondary,
+        isPrimary && styles.primary,
+        variant === 'secondary' && styles.secondary,
+        isGhost && styles.ghost,
         (disabled || loading) && styles.disabled,
         style,
       ]}
@@ -46,7 +49,9 @@ export function Button({
         <Text
           style={[
             styles.text,
-            isPrimary ? styles.primaryText : styles.secondaryText,
+            isPrimary && styles.primaryText,
+            variant === 'secondary' && styles.secondaryText,
+            isGhost && styles.ghostText,
           ]}>
           {title}
         </Text>
@@ -84,5 +89,13 @@ const styles = StyleSheet.create({
   },
   secondaryText: {
     color: colors.primary,
+  },
+  ghost: {
+    backgroundColor: 'transparent',
+    minHeight: 44,
+    paddingVertical: spacing.sm,
+  },
+  ghostText: {
+    color: colors.nori,
   },
 });

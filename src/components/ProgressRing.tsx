@@ -21,7 +21,6 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 interface ProgressRingProps {
   consumed: number;
   target: number;
-  caloriesBurned?: number;
   size?: number;
   strokeWidth?: number;
 }
@@ -33,7 +32,6 @@ interface ProgressRingProps {
 export function ProgressRing({
   consumed,
   target,
-  caloriesBurned = 0,
   size = 216,
   strokeWidth = 16,
 }: ProgressRingProps) {
@@ -157,15 +155,6 @@ export function ProgressRing({
                 {consumed.toLocaleString()}
               </Text>
               <Text style={styles.statLabel}> eaten</Text>
-              {caloriesBurned > 0 ? (
-                <>
-                  <Text style={styles.statLabel}> · </Text>
-                  <Text style={[styles.statValue, styles.statBurned]}>
-                    {caloriesBurned.toLocaleString()}
-                  </Text>
-                  <Text style={styles.statLabel}> burned</Text>
-                </>
-              ) : null}
             </Text>
             <Text style={styles.statLine}>
               <Text style={[styles.statValue, styles.statTarget]}>
@@ -221,9 +210,6 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontFamily: fonts.bodySemiBold,
-  },
-  statBurned: {
-    color: colors.primary,
   },
   statTarget: {
     color: colors.saffron,

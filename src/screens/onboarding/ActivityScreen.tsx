@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { OnboardingCaloriePreview } from '../../components/onboarding/OnboardingCaloriePreview';
 import { OnboardingFooter } from '../../components/onboarding/OnboardingFooter';
 import { OnboardingHeader } from '../../components/onboarding/OnboardingHeader';
 import { SelectionCard } from '../../components/onboarding/SelectionCard';
@@ -57,6 +58,20 @@ export function ActivityScreen({ route, navigation }: Props) {
           title="How active are you?"
           subtitle="Pick the option that best matches a typical week for you."
         />
+
+        {activityLevel ? (
+          <OnboardingCaloriePreview
+            calories={calculateMaintenance(
+              weightKg,
+              heightCm,
+              age,
+              gender,
+              activityLevel,
+            )}
+            caption="With this activity level"
+            hint="Next we'll set a target for your weight goal."
+          />
+        ) : null}
 
         <View style={styles.options}>
           {ACTIVITY_LEVELS.map(level => (

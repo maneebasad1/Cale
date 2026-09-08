@@ -98,3 +98,41 @@ export function estimateWeeklyWeightChange(calorieAdjustment: number): number {
   const weeklyKcal = Math.abs(calorieAdjustment) * 7;
   return Math.round((weeklyKcal / KCAL_PER_KG) * 10) / 10;
 }
+
+/** Calorie numbers we can show as soon as age + gender exist (onboarding step 2). */
+export function getOnboardingCaloriePreview(
+  weightKg: number,
+  heightCm: number,
+  age: number,
+  gender: Gender,
+): {
+  bmr: number;
+  typicalDaily: number;
+  sedentaryDaily: number;
+  extraActiveDaily: number;
+} {
+  return {
+    bmr: Math.round(calculateBMR(weightKg, heightCm, age, gender)),
+    typicalDaily: calculateMaintenance(
+      weightKg,
+      heightCm,
+      age,
+      gender,
+      'moderately_active',
+    ),
+    sedentaryDaily: calculateMaintenance(
+      weightKg,
+      heightCm,
+      age,
+      gender,
+      'sedentary',
+    ),
+    extraActiveDaily: calculateMaintenance(
+      weightKg,
+      heightCm,
+      age,
+      gender,
+      'extra_active',
+    ),
+  };
+}

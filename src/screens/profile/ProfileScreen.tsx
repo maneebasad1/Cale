@@ -9,6 +9,8 @@ import { Screen } from '../../components/Screen';
 import { SyncStatusIndicator } from '../../components/SyncStatusIndicator';
 import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
+import { isGoogleSignInConfigured } from '../../config/supabase';
+import { navigateToAuth } from '../../navigation/navigationRef';
 import type { ProfileStackParamList } from '../../navigation/types';
 import { deleteAccount } from '../../services/accountService';
 import { getProfile } from '../../services/storage';
@@ -27,9 +29,10 @@ type DialogState =
 
 export function ProfileScreen() {
   const navigation = useNavigation<Nav>();
-  const { user, signOut } = useAuth();
+  const { user, isGuest, signOut, signInWithGoogle } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [dialog, setDialog] = useState<DialogState>({ type: 'none' });
 
   const loadProfile = useCallback(async () => {
@@ -73,7 +76,18 @@ export function ProfileScreen() {
         ? 'Lose weight'
         : 'Gain weight';
 
-  const displayName = getUserDisplayName(user);
+  const displayName = isGuest
+    ? 'On this device'
+    : getUserDisplayName(user);
+
+  const handleGoogleSave = async () => {
+    setGoogleLoading(true);
+    const result = await signInWithGoogle();
+    setGoogleLoading(false);
+    if (result.error) {
+      setDialog({ type: 'error', message: result.error });
+    }
+  };
 
   return (
     <Screen edges={[]}>
@@ -85,7 +99,9 @@ export function ProfileScreen() {
           {displayName ? (
             <Text style={styles.displayName}>{displayName}</Text>
           ) : null}
-          {user?.email ? (
+          {isGuest ? (
+            <Text style={styles.email}>Not signed in · data stays on this phone</Text>
+          ) : user?.email ? (
             <Text style={styles.email}>{user.email}</Text>
           ) : null}
           <Text style={styles.targetValue}>
@@ -124,25 +140,48 @@ export function ProfileScreen() {
           />
         </View>
 
-        <View style={styles.menuGroup}>
-          <ProfileMenuRow
-            icon="trash-outline"
-            title="Delete account"
-            subtitle="Permanently remove your account and data"
-            onPress={() => setDialog({ type: 'delete' })}
-            destructive
-            showChevron={false}
-            loading={deleting}
-          />
-          <ProfileMenuRow
-            icon="log-out-outline"
-            title="Sign out"
-            subtitle="Sign out of your account"
-            onPress={() => setDialog({ type: 'signOut' })}
-            showChevron={false}
-            last
-          />
-        </View>
+        {isGuest ? (
+          <View style={styles.menuGroup}>
+            {isGoogleSignInConfigured() ? (
+              <ProfileMenuRow
+                icon="logo-google"
+                title="Continue with Google"
+                subtitle="One tap to save and sync"
+                onPress={handleGoogleSave}
+                showChevron={false}
+                loading={googleLoading}
+                last={false}
+              />
+            ) : null}
+            <ProfileMenuRow
+              icon="mail-outline"
+              title="Sign in with email"
+              subtitle="Keep your log if you switch phones"
+              onPress={() => navigateToAuth('save')}
+              last
+            />
+          </View>
+        ) : (
+          <View style={styles.menuGroup}>
+            <ProfileMenuRow
+              icon="trash-outline"
+              title="Delete account"
+              subtitle="Permanently remove your account and data"
+              onPress={() => setDialog({ type: 'delete' })}
+              destructive
+              showChevron={false}
+              loading={deleting}
+            />
+            <ProfileMenuRow
+              icon="log-out-outline"
+              title="Sign out"
+              subtitle="Sign out of your account"
+              onPress={() => setDialog({ type: 'signOut' })}
+              showChevron={false}
+              last
+            />
+          </View>
+        )}
       </ScrollView>
 
       <ConfirmDialog
@@ -183,7 +222,7 @@ export function ProfileScreen() {
 
       <ConfirmDialog
         visible={dialog.type === 'error'}
-        title="Could not delete account"
+        title="Something went wrong"
         message={dialog.type === 'error' ? dialog.message : ''}
         confirmLabel="OK"
         showCancel={false}
