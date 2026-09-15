@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CALE — Calorie Tracker App for Android</title>
+    <meta
+      name="description"
+      content="CALE is a calm calorie tracker for Android. Set a personalized daily target, log meals, and see your progress — or use the free calorie calculator on the web."
+    />
+    <link rel="canonical" href="https://getcale.com/" />
+    <meta name="robots" content="index,follow" />
+    <meta name="theme-color" content="#317F36" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CALE" />
+    <meta property="og:title" content="CALE — Track what you eat. Hit your goals." />
+    <meta
+      property="og:description"
+      content="A calm calorie tracker for Android with personalized targets, meal logging, and a free calorie calculator."
+    />
+    <meta property="og:url" content="https://getcale.com/" />
+    <meta property="og:image" content="https://getcale.com/images/og-cover.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="675" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CALE — Track what you eat. Hit your goals." />
+    <meta
+      name="twitter:description"
+      content="A calm calorie tracker for Android. Log meals, hit a daily target, and calculate calories on the web."
+    />
+    <meta name="twitter:image" content="https://getcale.com/images/og-cover.jpg" />
+    <link rel="icon" href="images/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
+    <link rel="manifest" href="site.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "SoftwareApplication",
+            "name": "CALE",
+            "applicationCategory": "HealthApplication",
+            "operatingSystem": "Android",
+            "description": "A calm calorie tracker that helps you log meals, set a personalized daily target, and see progress over time.",
+            "url": "https://getcale.com/",
+            "image": "https://getcale.com/images/og-cover.jpg",
+            "downloadUrl": "https://play.google.com/store/apps/details?id=com.cale",
+            "installUrl": "https://play.google.com/store/apps/details?id=com.cale",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "author": {
+              "@type": "Organization",
+              "name": "CALE",
+              "email": "muneebj71@gmail.com"
+            }
+          },
+          {
+            "@type": "WebSite",
+            "name": "CALE",
+            "url": "https://getcale.com/",
+            "description": "Official site for the CALE calorie tracker app, plus free BMR, TDEE, BMI, and macro calculators."
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Is CALE free?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. CALE is free to download on Google Play. You can start without an account and sign in later to sync."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How does the CALE calorie calculator work?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "CALE uses the Mifflin–St Jeor equation for BMR, then multiplies by your activity level to estimate maintenance calories. Weight goals add a modest daily deficit or surplus, with a floor of 1,500 kcal for men and 1,200 kcal for women."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Do I need an account to track calories?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. You can continue without an account and keep your log on this phone. Sign in with Google or email when you want to save and sync."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does CALE work offline?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Meal logging, your daily target, and the built-in food list work without a network. Cloud sync needs a signed-in account and a connection."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#content">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="index.html">
+          <img src="images/cale-icon.png" width="40" height="40" alt="" />
+          <span class="brand-name">CALE</span>
+        </a>
+        <button
+          class="nav-toggle"
+          type="button"
+          data-nav-toggle
+          aria-expanded="false"
+          aria-controls="site-nav"
+          aria-label="Open menu"
+        >
+          <span></span>
+        </button>
+        <nav id="site-nav" class="nav" data-nav>
+          <a href="index.html#screenshots">Screenshots</a>
+          <a href="index.html#features">Features</a>
+          <a href="calculators.html">Calorie calculator</a>
+          <a href="privacy.html">Privacy</a>
+          <a
+            class="btn btn-primary"
+            href="https://play.google.com/store/apps/details?id=com.cale"
+            >Get the app</a
+          >
+        </nav>
+      </div>
+    </header>
+
+    <main id="content">
+      <section class="hero">
+        <div class="wrap hero-grid">
+          <div>
+            <p class="eyebrow">Calorie tracker for Android</p>
+            <h1>Track what you eat. Hit your goals.</h1>
+            <p class="lede">
+              CALE is a calm, food-forward calorie tracker. Set a personalized
+              daily target, log meals in seconds, and see your progress — without
+              the clutter of a diet app.
+            </p>
+            <div class="hero-actions">
+              <a
+                class="btn btn-primary"
+                href="https://play.google.com/store/apps/details?id=com.cale"
+              >
+                <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 3.5v17l16-8.5L4 3.5z" />
+                </svg>
+                Get it on Google Play
+              </a>
+              <a class="btn btn-secondary" href="calculators.html"
+                >Free calorie calculator</a
+              >
+            </div>
+            <p class="hero-note">
+              Free to download. Start without an account. Sign in later to sync.
+            </p>
+          </div>
+          <div class="hero-shot">
+            <img
+              src="images/screenshot-home.jpg"
+              width="540"
+              height="960"
+              alt="CALE home screen showing 642 kcal left, a 7-day streak, and today’s breakfast and lunch log."
+            />
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="screenshots" aria-labelledby="shots-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="shots-title">See CALE on your phone</h2>
+            <p class="muted">
+              A progress ring for the day, fast meal logging, honest history, and
+              a target that updates as you set up.
+            </p>
+          </div>
+          <div class="shots">
+            <figure class="shot-card">
+              <img
+                src="images/screenshot-home.jpg"
+                width="540"
+                height="960"
+                alt="CALE today screen with a green calorie ring, streak badge, and grouped meals."
+              />
+              <figcaption>Today at a glance</figcaption>
+            </figure>
+            <figure class="shot-card">
+              <img
+                src="images/screenshot-log.jpg"
+                width="540"
+                height="960"
+                alt="CALE meal logging screen with breakfast, lunch, dinner, and snack chips and a food search list."
+              />
+              <figcaption>Log meals fast</figcaption>
+            </figure>
+            <figure class="shot-card">
+              <img
+                src="images/screenshot-history.jpg"
+                width="540"
+                height="960"
+                alt="CALE history calendar with daily calorie totals colored green on target and red when over."
+              />
+              <figcaption>History that stays honest</figcaption>
+            </figure>
+            <figure class="shot-card">
+              <img
+                src="images/screenshot-target.jpg"
+                width="540"
+                height="960"
+                alt="CALE setup screen showing a 2,450 kcal per day estimate based on activity level."
+              />
+              <figcaption>A target that fits you</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="features" aria-labelledby="features-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="features-title">Built for daily tracking, not diet drama</h2>
+            <p class="muted">
+              Local-first logging, a food list that includes familiar meals, and
+              reminders that stop once you’ve logged.
+            </p>
+          </div>
+          <div class="features">
+            <article class="card">
+              <div class="icon-pill" aria-hidden="true">◎</div>
+              <h3>Personalized calorie target</h3>
+              <p class="muted">
+                Short setup using your body metrics, activity, and goal — lose,
+                gain, or maintain. See the estimate as you go.
+              </p>
+            </article>
+            <article class="card">
+              <div class="icon-pill" aria-hidden="true">+</div>
+              <h3>Easy meal logging</h3>
+              <p class="muted">
+                Search foods, save your own, or enter calories. Breakfast, lunch,
+                dinner, and snacks from the home screen.
+              </p>
+            </article>
+            <article class="card">
+              <div class="icon-pill" aria-hidden="true">☰</div>
+              <h3>History that stays honest</h3>
+              <p class="muted">
+                Color-coded calendar and week or month charts. Older days keep
+                the target you had then, not today’s.
+              </p>
+            </article>
+            <article class="card">
+              <div class="icon-pill" aria-hidden="true">☁</div>
+              <h3>Start without an account</h3>
+              <p class="muted">
+                Log on this phone first. Sign in with Google or email when you
+                want to save and sync.
+              </p>
+            </article>
+            <article class="card">
+              <div class="icon-pill" aria-hidden="true">⌚</div>
+              <h3>Works offline</h3>
+              <p class="muted">
+                Core logging and your daily target work without a network. Sync
+                when you’re back online.
+              </p>
+            </article>
+            <article class="card">
+              <div class="icon-pill" aria-hidden="true">☀</div>
+              <h3>Home screen widget</h3>
+              <p class="muted">
+                Android widget for calories left, eaten vs target, streak, and
+                today’s date — without opening the app.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="how-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="how-title">Three steps to a clearer day</h2>
+          </div>
+          <div class="steps">
+            <article class="step">
+              <h3>Set a target</h3>
+              <p class="muted">
+                Enter weight, height, age, activity, and goal. CALE calculates
+                maintenance calories and a daily target.
+              </p>
+            </article>
+            <article class="step">
+              <h3>Log what you eat</h3>
+              <p class="muted">
+                Search the food list, reuse frequent foods, or type calories.
+                Your ring updates as you go.
+              </p>
+            </article>
+            <article class="step">
+              <h3>Review and repeat</h3>
+              <p class="muted">
+                Check the calendar, keep a streak, and sign in when you want the
+                same log on another phone.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="calc-title">
+        <div class="wrap calc-preview">
+          <div>
+            <h2 id="calc-title">Free calorie calculator</h2>
+            <p class="lede">
+              Same Mifflin–St Jeor math CALE uses in the app. Estimate BMR,
+              maintenance calories, a daily target, BMI, and a simple macro
+              split — then download CALE to track the days.
+            </p>
+            <a class="btn btn-primary" href="calculators.html"
+              >Open the calculators</a
+            >
+          </div>
+          <div class="card">
+            <div class="stat-row">
+              <span>BMR</span>
+              <span class="stat-value">1,649 kcal</span>
+            </div>
+            <div class="stat-row">
+              <span>Maintenance (TDEE)</span>
+              <span class="stat-value">2,556 kcal</span>
+            </div>
+            <div class="stat-row">
+              <span>Daily target</span>
+              <span class="stat-value">2,556 kcal</span>
+            </div>
+            <p class="hint">
+              Example for a 30-year-old, 70 kg, 175 cm, moderately active,
+              maintain.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="faq-title">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="faq-title">Questions</h2>
+          </div>
+          <div class="faq">
+            <details>
+              <summary>Is CALE free?</summary>
+              <p>
+                Yes. Download it on Google Play at no charge. You can start
+                without an account and sign in later to sync.
+              </p>
+            </details>
+            <details>
+              <summary>How does the calorie calculator work?</summary>
+              <p>
+                CALE uses Mifflin–St Jeor for basal metabolic rate, then an
+                activity multiplier for maintenance calories. Weight-loss or
+                gain goals add a modest daily change, with floors of 1,500 kcal
+                (men) and 1,200 kcal (women).
+              </p>
+            </details>
+            <details>
+              <summary>Do I need an account?</summary>
+              <p>
+                No. Continue without an account and keep data on this phone.
+                Google or email sign-in is there when you want a backup.
+              </p>
+            </details>
+            <details>
+              <summary>Does it work offline?</summary>
+              <p>
+                Yes for logging, your target, and the built-in food list. Sync
+                needs a signed-in account and a connection.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="wrap">
+          <div class="cta-band">
+            <div>
+              <h2>Ready to track today?</h2>
+              <p>Free on Android. Start without an account.</p>
+            </div>
+            <a
+              class="btn btn-primary"
+              href="https://play.google.com/store/apps/details?id=com.cale"
+              >Get CALE on Google Play</a
+            >
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-grid">
+        <div class="footer-brand">
+          <img src="images/cale-icon.png" width="40" height="40" alt="" />
+          <div>
+            <strong>CALE</strong>
+            <p class="tiny">
+              Track what you eat. Hit your goals.
+            </p>
+          </div>
+        </div>
+        <div class="footer-links">
+          <a href="calculators.html">Calorie calculator</a>
+          <a href="index.html#screenshots">Screenshots</a>
+          <a href="privacy.html">Privacy policy</a>
+        </div>
+        <div class="footer-links">
+          <a href="https://play.google.com/store/apps/details?id=com.cale"
+            >Google Play</a
+          >
+          <a href="mailto:muneebj71@gmail.com">muneebj71@gmail.com</a>
+          <p class="tiny">© <span data-year>2026</span> CALE</p>
+        </div>
+      </div>
+    </footer>
+    <script src="js/site.js" defer></script>
+  </body>
+</html>
