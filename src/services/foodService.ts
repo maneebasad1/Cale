@@ -6,7 +6,13 @@ import {
 } from './customFoodService';
 import type { FoodItem } from '../types/food';
 
+/** Energy (kcal) nutrient ids, in order of preference. */
 const ENERGY_NUTRIENT_ID = 1008;
+/** Foundation foods often only report Atwater energy (General, then Specific). */
+const ATWATER_GENERAL_NUTRIENT_ID = 2047;
+const ATWATER_SPECIFIC_NUTRIENT_ID = 2048;
+const USDA_TIMEOUT_MS = 10_000;
+const MAX_SEARCH_RESULTS = 30;
 
 interface UsdaFoodNutrient {
   nutrientId?: number;
@@ -26,11 +32,29 @@ interface UsdaSearchResponse {
   foods?: UsdaSearchFood[];
 }
 
-function getCaloriesFromNutrients(nutrients: UsdaFoodNutrient[] = []): number {
-  const energy = nutrients.find(
-    n => n.nutrientId === ENERGY_NUTRIENT_ID || n.nutrientNumber === '208',
+function findNutrientValue(
+  nutrients: UsdaFoodNutrient[],
+  nutrientId: number,
+  nutrientNumber?: string,
+): number | undefined {
+  const match = nutrients.find(
+    n =>
+      (n.nutrientId === nutrientId ||
+        (nutrientNumber !== undefined && n.nutrientNumber === nutrientNumber)) &&
+      typeof n.value === 'number' &&
+      n.value > 0,
   );
-  return Math.round(energy?.value ?? 0);
+  return match?.value;
+}
+
+export function getCaloriesFromNutrients(
+  nutrients: UsdaFoodNutrient[] = [],
+): number {
+  const value =
+    findNutrientValue(nutrients, ENERGY_NUTRIENT_ID, '208') ??
+    findNutrientValue(nutrients, ATWATER_GENERAL_NUTRIENT_ID, '957') ??
+    findNutrientValue(nutrients, ATWATER_SPECIFIC_NUTRIENT_ID, '958');
+  return Math.round(value ?? 0);
 }
 
 function mapUsdaFood(food: UsdaSearchFood): FoodItem | null {
@@ -80,10 +104,21 @@ export function searchCustomFoods(
   return filtered.slice(0, 15);
 }
 
-export async function searchUsdaFoods(query: string): Promise<FoodItem[]> {
+export interface UsdaSearchResult {
+  items: FoodItem[];
+  /** Set when the online search failed (network, timeout, HTTP error). */
+  error: string | null;
+}
+
+export async function searchUsdaFoods(
+  query: string,
+): Promise<UsdaSearchResult> {
   if (!USDA_API_KEY || query.trim().length < 2) {
-    return [];
+    return { items: [], error: null };
   }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), USDA_TIMEOUT_MS);
 
   try {
     const params = new URLSearchParams({
@@ -96,30 +131,35 @@ export async function searchUsdaFoods(query: string): Promise<FoodItem[]> {
     const response = await fetch(`${USDA_API_BASE}/foods/search?${params}`, {
       method: 'GET',
       headers: { Accept: 'application/json' },
+      signal: controller.signal,
     });
 
     if (!response.ok) {
-      return [];
+      return { items: [], error: `USDA search failed (${response.status})` };
     }
 
     const data = (await response.json()) as UsdaSearchResponse;
-    return (data.foods ?? [])
+    const items = (data.foods ?? [])
       .map(mapUsdaFood)
       .filter((item): item is FoodItem => item !== null);
-  } catch {
-    return [];
+    return { items, error: null };
+  } catch (err) {
+    const aborted = err instanceof Error && err.name === 'AbortError';
+    return {
+      items: [],
+      error: aborted ? 'USDA search timed out' : 'USDA search unavailable',
+    };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
-export async function searchFoods(query: string): Promise<FoodItem[]> {
-  const custom = searchCustomFoods(query, await getCustomFoods());
-  const local = searchLocalFoods(query);
-  const usda = await searchUsdaFoods(query);
-
+/** Merge result lists in order, dropping duplicate names. */
+export function mergeFoodResults(...lists: FoodItem[][]): FoodItem[] {
   const seen = new Set<string>();
   const merged: FoodItem[] = [];
 
-  for (const item of [...custom, ...local, ...usda]) {
+  for (const item of lists.flat()) {
     const key = item.name.toLowerCase();
     if (seen.has(key)) {
       continue;
@@ -128,7 +168,31 @@ export async function searchFoods(query: string): Promise<FoodItem[]> {
     merged.push(item);
   }
 
-  return merged.slice(0, 30);
+  return merged.slice(0, MAX_SEARCH_RESULTS);
+}
+
+/** Saved (custom) + built-in foods only — fast, no network. */
+export async function searchSavedFoods(query: string): Promise<FoodItem[]> {
+  const custom = searchCustomFoods(query, await getCustomFoods());
+  const local = searchLocalFoods(query);
+  return mergeFoodResults(custom, local);
+}
+
+export interface FoodSearchResult {
+  items: FoodItem[];
+  /** Non-null when the online (USDA) part of the search failed. */
+  remoteError: string | null;
+}
+
+export async function searchFoods(query: string): Promise<FoodSearchResult> {
+  const [saved, usda] = await Promise.all([
+    searchSavedFoods(query),
+    searchUsdaFoods(query),
+  ]);
+  return {
+    items: mergeFoodResults(saved, usda.items),
+    remoteError: usda.error,
+  };
 }
 
 export function getFoodById(id: string): FoodItem | undefined {
@@ -143,15 +207,6 @@ export async function resolveFoodById(
     return local;
   }
 
-  if (id.startsWith('user-') || isUuid(id)) {
-    return getCustomFoodById(id);
-  }
-
-  return undefined;
-}
-
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-    value,
-  );
+  // Custom food ids may be `user-…` (local) or server UUIDs; look up any id.
+  return getCustomFoodById(id);
 }

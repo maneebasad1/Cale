@@ -3,7 +3,7 @@ import { createId } from '../utils/id';
 import {
   localGetAllWorkouts,
   localGetWorkoutsForDate,
-  localSaveWorkoutsForDate,
+  localUpdateWorkoutsForDate,
 } from './localStore';
 import { enqueueSync } from './syncQueue';
 
@@ -31,8 +31,7 @@ export async function addWorkoutEntry(
     date,
     timestamp: new Date().toISOString(),
   };
-  const existing = await localGetWorkoutsForDate(date);
-  await localSaveWorkoutsForDate(date, [...existing, full]);
+  await localUpdateWorkoutsForDate(date, existing => [...existing, full]);
   await enqueueSync({
     entity: 'workoutEntry',
     operation: 'create',
@@ -53,16 +52,19 @@ export async function updateWorkoutEntry(
     >
   >,
 ): Promise<void> {
-  const existing = await localGetWorkoutsForDate(date);
-  const entry = existing.find(item => item.id === entryId);
-  if (!entry) {
+  let next = null as WorkoutEntry | null;
+  await localUpdateWorkoutsForDate(date, existing => {
+    const entry = existing.find(item => item.id === entryId);
+    if (!entry) {
+      return existing;
+    }
+    const updated = { ...entry, ...updates };
+    next = updated;
+    return existing.map(item => (item.id === entryId ? updated : item));
+  });
+  if (!next) {
     return;
   }
-  const next = { ...entry, ...updates };
-  await localSaveWorkoutsForDate(
-    date,
-    existing.map(item => (item.id === entryId ? next : item)),
-  );
   await enqueueSync({
     entity: 'workoutEntry',
     operation: 'update',
@@ -76,9 +78,7 @@ export async function deleteWorkoutEntry(
   date: string,
   entryId: string,
 ): Promise<void> {
-  const existing = await localGetWorkoutsForDate(date);
-  await localSaveWorkoutsForDate(
-    date,
+  await localUpdateWorkoutsForDate(date, existing =>
     existing.filter(item => item.id !== entryId),
   );
   await enqueueSync({

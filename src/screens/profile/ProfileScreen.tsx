@@ -12,26 +12,38 @@ import { useAuth } from '../../context/AuthContext';
 import { isGoogleSignInConfigured } from '../../config/supabase';
 import { navigateToAuth } from '../../navigation/navigationRef';
 import type { ProfileStackParamList } from '../../navigation/types';
-import { deleteAccount } from '../../services/accountService';
 import { getProfile } from '../../services/storage';
+import { flushSyncQueue } from '../../services/sync';
 import type { UserProfile } from '../../types';
 import { getUserDisplayName } from '../../utils/authUser';
 import { notificationsSummary } from '../../utils/notificationSummary';
 
 type Nav = NativeStackNavigationProp<ProfileStackParamList, 'ProfileHome'>;
 
+const SIGN_OUT_FLUSH_TIMEOUT_MS = 10_000;
+
+function unsyncedMessage(count: number | null): string {
+  if (count === null) {
+    return 'Some changes may not have synced yet and will be lost if you sign out. Sign out anyway?';
+  }
+  const noun = count === 1 ? 'change hasn’t' : 'changes haven’t';
+  return `${count} ${noun} synced yet and will be lost if you sign out. Sign out anyway?`;
+}
+
 type DialogState =
   | { type: 'none' }
   | { type: 'signOut' }
+  | { type: 'signOutUnsynced'; count: number | null }
   | { type: 'delete' }
   | { type: 'deleteConfirm' }
   | { type: 'error'; message: string };
 
 export function ProfileScreen() {
   const navigation = useNavigation<Nav>();
-  const { user, isGuest, signOut, signInWithGoogle } = useAuth();
+  const { user, isGuest, signOut, deleteAccount, signInWithGoogle } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [dialog, setDialog] = useState<DialogState>({ type: 'none' });
 
@@ -57,6 +69,33 @@ export function ProfileScreen() {
       return;
     }
     closeDialog();
+  };
+
+  const finishSignOut = async () => {
+    setSigningOut(true);
+    try {
+      closeDialog();
+      await signOut();
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
+  /** Try to upload pending changes first; warn if some would be lost. */
+  const confirmSignOut = async () => {
+    setSigningOut(true);
+    let remaining: number | null;
+    try {
+      remaining = await flushSyncQueue(SIGN_OUT_FLUSH_TIMEOUT_MS);
+    } catch {
+      remaining = null;
+    }
+    setSigningOut(false);
+    if (remaining === 0) {
+      await finishSignOut();
+      return;
+    }
+    setDialog({ type: 'signOutUnsynced', count: remaining });
   };
 
   if (!profile) {
@@ -190,10 +229,25 @@ export function ProfileScreen() {
         message="Sign out of your CALE account?"
         confirmLabel="Sign out"
         tone="destructive"
+        loading={signingOut}
         onCancel={closeDialog}
         onConfirm={() => {
-          closeDialog();
-          void signOut();
+          void confirmSignOut();
+        }}
+      />
+
+      <ConfirmDialog
+        visible={dialog.type === 'signOutUnsynced'}
+        title="Unsynced changes"
+        message={unsyncedMessage(
+          dialog.type === 'signOutUnsynced' ? dialog.count : null,
+        )}
+        confirmLabel="Sign out anyway"
+        tone="destructive"
+        loading={signingOut}
+        onCancel={closeDialog}
+        onConfirm={() => {
+          void finishSignOut();
         }}
       />
 

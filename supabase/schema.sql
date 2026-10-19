@@ -10,16 +10,19 @@ create table if not exists public.profiles (
   gender text not null check (gender in ('male', 'female')),
   activity_level text not null,
   maintenance_calories integer not null,
+  maintenance_is_custom boolean not null default false,
   goal_type text not null check (goal_type in ('lose', 'gain', 'maintain')),
   goal_weight_kg double precision not null,
   calorie_adjustment integer not null default 0,
   daily_target_calories integer not null,
+  adjustment_is_custom boolean not null default false,
   weight_unit text not null default 'kg',
   height_unit text not null default 'cm',
   onboarding_complete boolean not null default false,
   reminder_enabled boolean default false,
   reminder_time_minutes integer,
   meal_reminders jsonb,
+  workout_reminder jsonb,
   last_weight_prompt_date date,
   updated_at timestamptz not null default now()
 );
@@ -135,8 +138,11 @@ $$;
 
 grant execute on function public.delete_own_account() to authenticated;
 
--- alter table public.profiles add column if not exists maintenance_is_custom boolean not null default false;
--- alter table public.profiles add column if not exists workout_reminder jsonb;
+-- Columns added after the initial release. Idempotent — safe to re-run on
+-- existing databases (production must run these; the client writes them).
+alter table public.profiles add column if not exists maintenance_is_custom boolean not null default false;
+alter table public.profiles add column if not exists adjustment_is_custom boolean not null default false;
+alter table public.profiles add column if not exists workout_reminder jsonb;
 
 -- Target history snapshots (for evaluating past days against the target active then)
 create table if not exists public.target_history (

@@ -72,7 +72,15 @@ export function CalorieLineChart({ days }: CalorieLineChartProps) {
 
   const maxY = useMemo(
     () =>
-      Math.max(...days.map(day => Math.max(day.total, day.target)), 1),
+      Math.max(
+        ...days.map(day =>
+          Math.max(
+            Number.isFinite(day.total) ? day.total : 0,
+            Number.isFinite(day.target) ? day.target : 0,
+          ),
+        ),
+        1,
+      ),
     [days],
   );
 
@@ -93,9 +101,23 @@ export function CalorieLineChart({ days }: CalorieLineChartProps) {
   const yForValue = (value: number) =>
     PAD_TOP + plotHeight - (value / maxY) * plotHeight;
 
-  const eatenPoints = days
-    .map((day, index) => `${xForIndex(index)},${yForValue(day.total)}`)
-    .join(' ');
+  // Break the "Eaten" line on unlogged days: one polyline per run of
+  // consecutive logged days. Single-day runs are shown by their dot only.
+  const eatenSegments: string[] = [];
+  let currentSegment: string[] = [];
+  days.forEach((day, index) => {
+    if (day.logged) {
+      currentSegment.push(`${xForIndex(index)},${yForValue(day.total)}`);
+      return;
+    }
+    if (currentSegment.length > 1) {
+      eatenSegments.push(currentSegment.join(' '));
+    }
+    currentSegment = [];
+  });
+  if (currentSegment.length > 1) {
+    eatenSegments.push(currentSegment.join(' '));
+  }
 
   const targetPoints = days
     .map((day, index) => `${xForIndex(index)},${yForValue(day.target)}`)
@@ -188,17 +210,20 @@ export function CalorieLineChart({ days }: CalorieLineChartProps) {
                     strokeLinecap="round"
                   />
 
-                  <Polyline
-                    points={eatenPoints}
-                    fill="none"
-                    stroke={colors.primary}
-                    strokeWidth={2.5}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                  />
+                  {eatenSegments.map(points => (
+                    <Polyline
+                      key={points}
+                      points={points}
+                      fill="none"
+                      stroke={colors.primary}
+                      strokeWidth={2.5}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                  ))}
 
                   {days.map((day, index) => {
-                    if (day.total <= 0) {
+                    if (!day.logged) {
                       return null;
                     }
                     const tone = getProgressTone(day.total, day.target);
@@ -218,7 +243,7 @@ export function CalorieLineChart({ days }: CalorieLineChartProps) {
                 </Svg>
 
                 {days.map((day, index) => {
-                  if (day.total <= 0) {
+                  if (!day.logged) {
                     return null;
                   }
                   const x = xForIndex(index);

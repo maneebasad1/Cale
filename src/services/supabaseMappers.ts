@@ -1,5 +1,5 @@
 import type { CalorieEntry, MealReminders, UserProfile } from '../types';
-import { DEFAULT_MEAL_REMINDERS, MEAL_REMINDER_MEALS } from '../types';
+import { DEFAULT_MEAL_REMINDERS } from '../types';
 import { isAnyMealReminderEnabled, resolveMealReminders } from '../utils/mealReminders';
 import { isWorkoutReminderEnabled, resolveWorkoutReminder } from '../utils/workoutReminders';
 import type { FoodItem } from '../types/food';

@@ -49,6 +49,29 @@ export async function tryGetUserId(): Promise<string | null> {
   }
 }
 
+/** PostgREST caps responses (default max-rows 1000), so page explicitly. */
+const PAGE_SIZE = 1000;
+
+async function fetchAllPages<T>(
+  fetchPage: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{ data: unknown[] | null; error: unknown }>,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await fetchPage(from, from + PAGE_SIZE - 1);
+    if (error) {
+      throw error;
+    }
+    const page = (data ?? []) as T[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) {
+      return rows;
+    }
+  }
+}
+
 export async function fetchProfile(): Promise<UserProfile | null> {
   const userId = await getUserId();
   const { data, error } = await getSupabase()
@@ -80,18 +103,18 @@ export async function upsertProfile(profile: UserProfile): Promise<void> {
 
 export async function fetchAllLogs(): Promise<Record<string, DailyLog>> {
   const userId = await getUserId();
-  const { data, error } = await getSupabase()
-    .from('calorie_entries')
-    .select('*')
-    .eq('user_id', userId)
-    .order('logged_at', { ascending: true });
-
-  if (error) {
-    throw error;
-  }
+  const data = await fetchAllPages<CalorieEntryRow>((from, to) =>
+    getSupabase()
+      .from('calorie_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .order('logged_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to),
+  );
 
   const logs: Record<string, DailyLog> = {};
-  (data as CalorieEntryRow[]).forEach(row => {
+  data.forEach(row => {
     if (!logs[row.log_date]) {
       logs[row.log_date] = { date: row.log_date, entries: [] };
     }
@@ -161,16 +184,16 @@ export async function removeEntry(entryId: string): Promise<void> {
 
 export async function fetchCustomFoods(): Promise<FoodItem[]> {
   const userId = await getUserId();
-  const { data, error } = await getSupabase()
-    .from('custom_foods')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    throw error;
-  }
-  return (data as CustomFoodRow[]).map(customFoodFromRow);
+  const data = await fetchAllPages<CustomFoodRow>((from, to) =>
+    getSupabase()
+      .from('custom_foods')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(from, to),
+  );
+  return data.map(customFoodFromRow);
 }
 
 export async function upsertCustomFood(food: FoodItem): Promise<void> {
@@ -206,16 +229,16 @@ export async function deleteCustomFoodRow(id: string): Promise<void> {
 
 export async function fetchWeightEntries(): Promise<WeightEntry[]> {
   const userId = await getUserId();
-  const { data, error } = await getSupabase()
-    .from('weight_entries')
-    .select('*')
-    .eq('user_id', userId)
-    .order('log_date', { ascending: false });
-
-  if (error) {
-    throw error;
-  }
-  return (data as WeightEntryRow[]).map(weightFromRow);
+  const data = await fetchAllPages<WeightEntryRow>((from, to) =>
+    getSupabase()
+      .from('weight_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .order('log_date', { ascending: false })
+      .order('id', { ascending: true })
+      .range(from, to),
+  );
+  return data.map(weightFromRow);
 }
 
 export async function upsertWeightEntryRemote(
@@ -267,58 +290,76 @@ export async function deleteWeightEntryRow(id: string): Promise<void> {
 
 export async function fetchTargetHistory(): Promise<TargetSnapshot[]> {
   const userId = await getUserId();
-  const { data, error } = await getSupabase()
-    .from('target_history')
-    .select('*')
-    .eq('user_id', userId)
-    .order('effective_from', { ascending: true });
-
-  if (error) {
-    throw error;
-  }
-  return (data as TargetHistoryRow[]).map(targetSnapshotFromRow);
+  const data = await fetchAllPages<TargetHistoryRow>((from, to) =>
+    getSupabase()
+      .from('target_history')
+      .select('*')
+      .eq('user_id', userId)
+      .order('effective_from', { ascending: true })
+      .range(from, to),
+  );
+  return data.map(targetSnapshotFromRow);
 }
 
+/**
+ * Make remote target history equal `snapshots` without ever leaving it empty
+ * mid-way: upsert the new set first, then delete rows that aren't in it.
+ */
 export async function replaceTargetHistoryRemote(
   snapshots: TargetSnapshot[],
 ): Promise<void> {
   const userId = await getUserId();
-  const { error: deleteError } = await getSupabase()
-    .from('target_history')
-    .delete()
-    .eq('user_id', userId);
-  if (deleteError) {
-    throw deleteError;
-  }
-  if (!snapshots.length) {
-    return;
-  }
-  const rows = snapshots.map(snapshot => ({
+  // One row per effective_from (last wins) — the upsert can't touch a row twice.
+  const byDate = new Map<string, TargetSnapshot>();
+  snapshots.forEach(snapshot => byDate.set(snapshot.effectiveFrom, snapshot));
+  const rows = [...byDate.values()].map(snapshot => ({
     user_id: userId,
     effective_from: snapshot.effectiveFrom,
     daily_target_calories: snapshot.dailyTargetCalories,
     maintenance_calories: snapshot.maintenanceCalories,
   }));
-  const { error } = await getSupabase().from('target_history').insert(rows);
-  if (error) {
-    throw error;
+
+  if (rows.length) {
+    const { error } = await getSupabase()
+      .from('target_history')
+      .upsert(rows, { onConflict: 'user_id,effective_from' });
+    if (error) {
+      throw error;
+    }
+  }
+
+  let staleQuery = getSupabase()
+    .from('target_history')
+    .delete()
+    .eq('user_id', userId);
+  if (rows.length) {
+    // effective_from is a YYYY-MM-DD date, safe inside a PostgREST in-list.
+    staleQuery = staleQuery.not(
+      'effective_from',
+      'in',
+      `(${[...byDate.keys()].join(',')})`,
+    );
+  }
+  const { error: deleteError } = await staleQuery;
+  if (deleteError) {
+    throw deleteError;
   }
 }
 
 export async function fetchAllWorkouts(): Promise<Record<string, WorkoutEntry[]>> {
   const userId = await getUserId();
-  const { data, error } = await getSupabase()
-    .from('workout_entries')
-    .select('*')
-    .eq('user_id', userId)
-    .order('logged_at', { ascending: true });
-
-  if (error) {
-    throw error;
-  }
+  const data = await fetchAllPages<WorkoutEntryRow>((from, to) =>
+    getSupabase()
+      .from('workout_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .order('logged_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to),
+  );
 
   const workouts: Record<string, WorkoutEntry[]> = {};
-  (data as WorkoutEntryRow[]).forEach(row => {
+  data.forEach(row => {
     const entry = workoutFromRow(row);
     if (!workouts[entry.date]) {
       workouts[entry.date] = [];

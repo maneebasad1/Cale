@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -12,6 +12,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HistorySummaryPanel } from '../../components/history/HistorySummaryPanel';
 import { Screen } from '../../components/Screen';
+import { useToday } from '../../hooks/useToday';
 import {
   colors,
   fonts,
@@ -31,15 +32,11 @@ import {
   getTotalCalories,
 } from '../../services/storage';
 import { ensureTargetHistorySeeded, getTargetHistory } from '../../services/targetHistoryService';
-import type { DailyLog, UserProfile } from '../../types';
+import type { CalorieEntry, DailyLog, UserProfile } from '../../types';
 import type { TargetSnapshot } from '../../types/targetHistory';
 import { getPeriodSummary, getTrailingDates } from '../../utils/calorieStats';
 import { getTargetForDate } from '../../utils/targetHistory';
-import {
-  formatDateKey,
-  getMonthStart,
-  isFutureDate,
-} from '../../utils/date';
+import { getMonthStart, isFutureDate } from '../../utils/date';
 
 type MarkedDates = Record<
   string,
@@ -54,12 +51,43 @@ type MarkedDates = Record<
 >;
 
 type HistoryView = 'calendar' | 'summary';
+
+function copyKey(entry: CalorieEntry): string {
+  return `${entry.mealType}|${entry.calories}|${(entry.foodName ?? '')
+    .trim()
+    .toLowerCase()}`;
+}
+
+/** True when every source entry (name + calories + meal) is already in target. */
+function containsAllEntries(
+  target: CalorieEntry[],
+  source: CalorieEntry[],
+): boolean {
+  if (!source.length) {
+    return false;
+  }
+  const available = new Map<string, number>();
+  target.forEach(entry => {
+    const key = copyKey(entry);
+    available.set(key, (available.get(key) ?? 0) + 1);
+  });
+  return source.every(entry => {
+    const key = copyKey(entry);
+    const remaining = available.get(key) ?? 0;
+    if (remaining <= 0) {
+      return false;
+    }
+    available.set(key, remaining - 1);
+    return true;
+  });
+}
 type SummaryPeriod = 'week' | 'month';
 
 export function HistoryScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<HistoryStackParamList>>();
-  const today = useMemo(() => formatDateKey(), []);
+  const today = useToday();
+  const copyInFlightRef = useRef(false);
   const [markedDates, setMarkedDates] = useState<MarkedDates>({});
   const [dayTotals, setDayTotals] = useState<Record<string, number>>({});
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -147,12 +175,15 @@ export function HistoryScreen() {
   const target = profile?.dailyTargetCalories ?? profile?.maintenanceCalories ?? 0;
   const goalType = profile?.goalType ?? 'lose';
 
-  const targetFallback = profile
-    ? {
-        dailyTargetCalories: profile.dailyTargetCalories,
-        maintenanceCalories: profile.maintenanceCalories,
-      }
-    : { dailyTargetCalories: 0, maintenanceCalories: 0 };
+  const profileTarget = profile?.dailyTargetCalories ?? 0;
+  const profileMaintenance = profile?.maintenanceCalories ?? 0;
+  const targetFallback = useMemo(
+    () => ({
+      dailyTargetCalories: profileTarget,
+      maintenanceCalories: profileMaintenance,
+    }),
+    [profileTarget, profileMaintenance],
+  );
 
   const getTargetForDay = useCallback(
     (date: string) =>
@@ -173,6 +204,8 @@ export function HistoryScreen() {
       endDate,
       getTargetForDay,
       goalType,
+      {},
+      today,
     );
   }, [
     getTargetForDay,
@@ -190,32 +223,67 @@ export function HistoryScreen() {
     navigation.navigate('DayDetail', { date: day.dateString });
   };
 
-  const handleCopyDayToToday = (dateStr: string) => {
+  const handleCopyDayToToday = async (dateStr: string) => {
     if (isFutureDate(dateStr) || dateStr === today) {
       return;
     }
+    // Guard the whole flow (lookup → confirm → copy) against a second
+    // long-press / double-tap on "Copy" appending the meals twice.
+    if (copyInFlightRef.current) {
+      return;
+    }
+    copyInFlightRef.current = true;
+    const release = () => {
+      copyInFlightRef.current = false;
+    };
 
-    getDailyLog(dateStr).then(log => {
-      if (!log.entries.length) {
-        return;
+    const targetDate = today;
+    let source: DailyLog;
+    let alreadyCopied: boolean;
+    try {
+      const [sourceLog, targetLog] = await Promise.all([
+        getDailyLog(dateStr),
+        getDailyLog(targetDate),
+      ]);
+      source = sourceLog;
+      alreadyCopied = containsAllEntries(targetLog.entries, sourceLog.entries);
+    } catch {
+      release();
+      return;
+    }
+
+    if (!source.entries.length) {
+      release();
+      return;
+    }
+
+    const count = source.entries.length;
+    const noun = `entr${count === 1 ? 'y' : 'ies'}`;
+
+    const runCopy = async () => {
+      try {
+        await copyDayEntries(dateStr, targetDate);
+        Alert.alert('Copied', "Today's log has been updated.");
+        await loadData();
+      } finally {
+        release();
       }
+    };
 
-      Alert.alert(
-        'Copy meals to today?',
-        `Copy ${log.entries.length} entr${log.entries.length === 1 ? 'y' : 'ies'} from ${dateStr} to today?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Copy',
-            onPress: async () => {
-              await copyDayEntries(dateStr, today);
-              Alert.alert('Copied', "Today's log has been updated.");
-              await loadData();
-            },
-          },
-        ],
-      );
-    });
+    Alert.alert(
+      alreadyCopied ? 'Already copied?' : 'Copy meals to today?',
+      alreadyCopied
+        ? `Today already has the ${count} ${noun} from ${dateStr}. Copy them again?`
+        : `Copy ${count} ${noun} from ${dateStr} to today?`,
+      [
+        { text: 'Cancel', style: 'cancel', onPress: release },
+        {
+          text: alreadyCopied ? 'Copy again' : 'Copy',
+          onPress: runCopy,
+        },
+      ],
+      { cancelable: true, onDismiss: release },
+    );
   };
 
   return (

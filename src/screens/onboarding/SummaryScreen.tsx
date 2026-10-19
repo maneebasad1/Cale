@@ -1,5 +1,5 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Icon } from '../../components/Icon';
 import { OnboardingFooter } from '../../components/onboarding/OnboardingFooter';
@@ -13,8 +13,8 @@ import {
   formatTargetRange,
   TARGET_RANGE_KCAL,
 } from '../../utils/calorieStats';
-import { estimateWeeklyWeightChange } from '../../utils/bmr';
 import { displayWeight } from '../../utils/units';
+import { estimateWeeklyWeightChangeForUnit } from '../../utils/weightTimeline';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Summary'>;
 
@@ -35,33 +35,56 @@ export function SummaryScreen({ route }: Props) {
     heightUnit,
   } = route.params;
   const { refreshProfile } = useApp();
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   const isMaintain = goalType === 'maintain';
   const isLoss = goalType === 'lose';
-  const weeklyChange = estimateWeeklyWeightChange(calorieAdjustment);
+  const weeklyChange = estimateWeeklyWeightChangeForUnit(
+    Math.abs(calorieAdjustment),
+    weightUnit,
+  );
 
   const reasoningLine = isMaintain
-    ? `${maintenanceCalories.toLocaleString()} kcal/day matches your estimated maintenance`
-    : `${dailyTargetCalories.toLocaleString()} kcal/day → ~${weeklyChange} kg/week ${isLoss ? 'loss' : 'gain'}`;
+    ? dailyTargetCalories > maintenanceCalories
+      ? `${dailyTargetCalories.toLocaleString()} kcal/day is the safe minimum (your estimated maintenance is ${maintenanceCalories.toLocaleString()})`
+      : `${maintenanceCalories.toLocaleString()} kcal/day matches your estimated maintenance`
+    : `${dailyTargetCalories.toLocaleString()} kcal/day → ~${weeklyChange} ${weightUnit}/week ${isLoss ? 'loss' : 'gain'}`;
 
   const handleGetStarted = async () => {
-    await saveProfile({
-      weightKg,
-      heightCm,
-      age,
-      gender,
-      activityLevel,
-      maintenanceCalories,
-      goalType,
-      goalWeightKg,
-      calorieAdjustment,
-      dailyTargetCalories,
-      adjustmentIsCustom,
-      weightUnit,
-      heightUnit,
-      onboardingComplete: true,
-    });
-    await refreshProfile();
+    // Ref guard blocks a second tap that lands before the re-render.
+    if (savingRef.current) {
+      return;
+    }
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await saveProfile({
+        weightKg,
+        heightCm,
+        age,
+        gender,
+        activityLevel,
+        maintenanceCalories,
+        goalType,
+        goalWeightKg,
+        calorieAdjustment,
+        dailyTargetCalories,
+        adjustmentIsCustom,
+        weightUnit,
+        heightUnit,
+        onboardingComplete: true,
+      });
+      await refreshProfile();
+    } catch {
+      Alert.alert(
+        'Couldn’t save your plan',
+        'Something went wrong saving your profile. Please try again.',
+      );
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   return (
@@ -141,7 +164,7 @@ export function SummaryScreen({ route }: Props) {
               </Text>
             </Text>
             <Text style={styles.goalEstimate}>
-              Estimated pace: ~{weeklyChange} kg per week
+              Estimated pace: ~{weeklyChange} {weightUnit} per week
             </Text>
           </View>
         )}
@@ -156,6 +179,8 @@ export function SummaryScreen({ route }: Props) {
       <OnboardingFooter
         title="Get started"
         onPress={handleGetStarted}
+        loading={saving}
+        disabled={saving}
       />
     </Screen>
   );

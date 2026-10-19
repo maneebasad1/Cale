@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Button } from './Button';
 import { Icon } from './Icon';
 import { colors, fonts, radii, spacing, typography } from '../constants/theme';
 import type { WeightUnit } from '../types';
+import { useApp } from '../context/AppContext';
 import { addWeightEntry } from '../services/weightService';
-import { displayWeight, kgToLb, lbToKg } from '../utils/units';
+import { validateWeightKg } from '../utils/bodyValidation';
+import { parseDecimal } from '../utils/parseDecimal';
+import { syncProfileWeight } from '../utils/profileWeightSync';
+import { displayWeight, formatWeightInput, lbToKg } from '../utils/units';
 
 interface WeightCheckInBannerProps {
   weightUnit: WeightUnit;
@@ -21,25 +25,45 @@ export function WeightCheckInBanner({
   onDismiss,
 }: WeightCheckInBannerProps) {
   const [expanded, setExpanded] = useState(false);
-  const [weight, setWeight] = useState(
-    String(
-      Math.round(
-        (weightUnit === 'kg' ? currentWeightKg : kgToLb(currentWeightKg)) * 10,
-      ) / 10,
-    ),
-  );
+  const { refreshProfile } = useApp();
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const initialWeight = formatWeightInput(currentWeightKg, weightUnit);
+  const [weight, setWeight] = useState(initialWeight);
 
   const handleSave = async () => {
-    const num = parseFloat(weight);
-    if (!num || num <= 0) {
-      Alert.alert('Invalid weight', 'Enter a valid weight.');
+    if (savingRef.current) {
       return;
     }
 
-    const weightKg = weightUnit === 'kg' ? num : lbToKg(num);
-    await addWeightEntry(weightKg);
-    onLogged();
-    setExpanded(false);
+    const num = parseDecimal(weight);
+    // Untouched prefilled value: keep the exact stored kg (no rounding drift).
+    const weightKg =
+      weight.trim() === initialWeight
+        ? currentWeightKg
+        : weightUnit === 'kg'
+          ? num
+          : lbToKg(num);
+    const error = validateWeightKg(weightKg, weightUnit);
+    if (error) {
+      Alert.alert('Invalid weight', error);
+      return;
+    }
+
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await addWeightEntry(weightKg);
+      await syncProfileWeight(weightKg);
+      await refreshProfile();
+      onLogged();
+      setExpanded(false);
+    } catch {
+      Alert.alert('Couldn’t save weight', 'Something went wrong. Please try again.');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   if (!expanded) {
@@ -84,7 +108,7 @@ export function WeightCheckInBanner({
         <Text style={styles.suffix}>{weightUnit}</Text>
       </View>
       <View style={styles.actions}>
-        <Button title="Save weight" onPress={handleSave} />
+        <Button title="Save weight" onPress={handleSave} loading={saving} />
         <TouchableOpacity onPress={() => setExpanded(false)}>
           <Text style={styles.cancel}>Cancel</Text>
         </TouchableOpacity>

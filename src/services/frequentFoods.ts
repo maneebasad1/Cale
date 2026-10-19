@@ -1,7 +1,7 @@
 import type { CalorieEntry, DailyLog } from '../types';
 import type { FoodItem } from '../types/food';
 import { getAllLogs } from './storage';
-import { getCustomFoodById } from './customFoodService';
+import { getCustomFoods } from './customFoodService';
 import { getFoodById } from './foodService';
 
 interface FoodTally {
@@ -53,9 +53,12 @@ export async function getFrequentFoods(limit = 15): Promise<FoodItem[]> {
     (a, b) => scoreTally(b) - scoreTally(a),
   );
 
+  const customFoods = await getCustomFoods();
+  const customById = new Map(customFoods.map(food => [food.id, food]));
+
   const foods: FoodItem[] = [];
   for (const tally of sorted.slice(0, limit)) {
-    const food = await entryToFoodItem(tally.entry);
+    const food = entryToFoodItem(tally.entry, customById);
     if (food) {
       foods.push(food);
     }
@@ -64,18 +67,19 @@ export async function getFrequentFoods(limit = 15): Promise<FoodItem[]> {
   return foods;
 }
 
-async function entryToFoodItem(entry: CalorieEntry): Promise<FoodItem | null> {
+function entryToFoodItem(
+  entry: CalorieEntry,
+  customById: Map<string, FoodItem>,
+): FoodItem | null {
   if (entry.foodId) {
-    if (entry.foodId.startsWith('user-')) {
-      const custom = await getCustomFoodById(entry.foodId);
-      if (custom) {
-        return custom;
-      }
-    } else {
-      const local = getFoodById(entry.foodId);
-      if (local) {
-        return local;
-      }
+    // Custom foods can have `user-` ids (local) or server UUIDs (synced).
+    const custom = customById.get(entry.foodId);
+    if (custom) {
+      return custom;
+    }
+    const local = getFoodById(entry.foodId);
+    if (local) {
+      return local;
     }
   }
 

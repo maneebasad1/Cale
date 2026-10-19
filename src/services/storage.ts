@@ -6,8 +6,8 @@ import {
   localGetAllLogs,
   localGetDailyLog,
   localGetProfile,
-  localSaveDailyLog,
   localSaveProfile,
+  localUpdateAllLogs,
   localUpsertEntry,
 } from './localStore';
 import { enqueueSync } from './syncQueue';
@@ -45,10 +45,22 @@ export async function getDailyLog(date: string): Promise<DailyLog> {
 }
 
 export async function saveDailyLog(log: DailyLog): Promise<void> {
-  const existing = await localGetDailyLog(log.date);
-  const nextIds = new Set(log.entries.map(e => e.id));
+  // Read the old day and write the new one atomically so overlapping saves
+  // can't lose each other's changes.
+  let existingEntries: CalorieEntry[] = [];
+  await localUpdateAllLogs(logs => {
+    existingEntries = logs[log.date]?.entries ?? [];
+    const next = { ...logs };
+    if (log.entries.length === 0) {
+      delete next[log.date];
+    } else {
+      next[log.date] = log;
+    }
+    return next;
+  });
 
-  for (const entry of existing.entries) {
+  const nextIds = new Set(log.entries.map(e => e.id));
+  for (const entry of existingEntries) {
     if (!nextIds.has(entry.id)) {
       await enqueueSync({
         entity: 'calorieEntry',
@@ -59,10 +71,8 @@ export async function saveDailyLog(log: DailyLog): Promise<void> {
     }
   }
 
-  await localSaveDailyLog(log);
-
   for (const entry of log.entries) {
-    const wasExisting = existing.entries.some(e => e.id === entry.id);
+    const wasExisting = existingEntries.some(e => e.id === entry.id);
     await enqueueSync({
       entity: 'calorieEntry',
       operation: wasExisting ? 'update' : 'create',
@@ -108,13 +118,27 @@ export async function updateEntry(
     >
   >,
 ): Promise<void> {
-  const log = await localGetDailyLog(date);
-  const existing = log.entries.find(e => e.id === entryId);
-  if (!existing) {
+  // Atomic: an overlapping delete must not be undone by this update.
+  let next: CalorieEntry | null = null;
+  await localUpdateAllLogs(logs => {
+    const log = logs[date];
+    const existing = log?.entries.find(e => e.id === entryId);
+    if (!log || !existing) {
+      return logs;
+    }
+    const updated: CalorieEntry = { ...existing, ...updates };
+    next = updated;
+    return {
+      ...logs,
+      [date]: {
+        ...log,
+        entries: log.entries.map(e => (e.id === entryId ? updated : e)),
+      },
+    };
+  });
+  if (!next) {
     return;
   }
-  const next: CalorieEntry = { ...existing, ...updates };
-  await localUpsertEntry(date, next);
   await enqueueSync({
     entity: 'calorieEntry',
     operation: 'update',

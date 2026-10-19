@@ -1,5 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
+  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -12,6 +19,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { FormSection } from '../../components/onboarding/FormSection';
 import { OnboardingFooter } from '../../components/onboarding/OnboardingFooter';
 import { Button } from '../../components/Button';
+import { EmptyState } from '../../components/EmptyState';
 import { FoodSearchList } from '../../components/FoodSearchList';
 import { Icon } from '../../components/Icon';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
@@ -38,7 +46,14 @@ import {
 } from '../../services/storage';
 import type { MealType } from '../../types';
 import type { FoodItem } from '../../types/food';
+import {
+  MAX_ENTRY_CALORIES,
+  addCaloriesCapped,
+  getCalorieLimitError,
+  sanitizeCalorieInput,
+} from '../../utils/calorieLimits';
 import { formatDisplayDate, isToday } from '../../utils/date';
+import { getDefaultMealType } from '../../utils/mealTime';
 
 type Nav = NativeStackNavigationProp<MainStackParamList, 'AddEntry'>;
 type Route = RouteProp<MainStackParamList, 'AddEntry'>;
@@ -69,7 +84,7 @@ export function AddEntryScreen() {
   const aiEnabled = isOpenAiConfigured();
 
   const [mealType, setMealType] = useState<MealType>(
-    initialMealType ?? 'breakfast',
+    () => initialMealType ?? getDefaultMealType(),
   );
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>(
     aiEnabled ? 'describe' : 'custom',
@@ -84,6 +99,15 @@ export function AddEntryScreen() {
   const [selectedFoods, setSelectedFoods] = useState<FoodItem[]>([]);
   const [foodSearchOpen, setFoodSearchOpen] = useState(false);
   const [loaded, setLoaded] = useState(!entryId);
+  const [entryMissing, setEntryMissing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  /**
+   * Food selection (ids) whose calories were last applied to the input. Lets
+   * the sync effect below react only to real selection changes, so loading an
+   * existing entry for edit keeps its saved calories.
+   */
+  const syncedSelectionRef = useRef('');
 
   const usingFoodDatabase = selectedFoods.length > 0;
 
@@ -144,15 +168,24 @@ export function AddEntryScreen() {
     }
     setFoodSearchOpen(true);
     setSelectedFoods(prev => {
+      if (isEditing) {
+        // An edited entry holds exactly one food — replace it.
+        return [prefillFood];
+      }
       if (prev.some(food => food.id === prefillFood.id)) {
         return prev;
       }
       return [...prev, prefillFood];
     });
     navigation.setParams({ prefillFood: undefined });
-  }, [prefillFood, navigation]);
+  }, [prefillFood, navigation, isEditing]);
 
   useEffect(() => {
+    const selectionKey = selectedIds.join('|');
+    if (selectionKey === syncedSelectionRef.current) {
+      return;
+    }
+    syncedSelectionRef.current = selectionKey;
     if (!usingFoodDatabase) {
       return;
     }
@@ -165,7 +198,14 @@ export function AddEntryScreen() {
     } else if (!isEditing) {
       setCalories('');
     }
-  }, [usingFoodDatabase, isEditing, isMulti, selectedFoods, selectedTotal]);
+  }, [
+    usingFoodDatabase,
+    isEditing,
+    isMulti,
+    selectedFoods,
+    selectedIds,
+    selectedTotal,
+  ]);
 
   useEffect(() => {
     if (!entryId) {
@@ -175,7 +215,11 @@ export function AddEntryScreen() {
     getDailyLog(date).then(async log => {
       const entry = log.entries.find(e => e.id === entryId);
       if (!entry) {
+        setEntryMissing(true);
         setLoaded(true);
+        Alert.alert('Entry not found', 'This entry no longer exists.', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
         return;
       }
 
@@ -188,17 +232,17 @@ export function AddEntryScreen() {
         setCustomName(entry.foodName ?? '');
       } else if (entry.foodId || entry.foodName) {
         setFoodSearchOpen(true);
-        if (entry.foodId) {
-          const resolved = await resolveFoodById(entry.foodId);
-          setSelectedFoods([resolved ?? foodFromEntry(entry)]);
-        } else {
-          setSelectedFoods([foodFromEntry(entry)]);
-        }
+        const food = entry.foodId
+          ? (await resolveFoodById(entry.foodId)) ?? foodFromEntry(entry)
+          : foodFromEntry(entry);
+        // Keep the entry's saved calories rather than the catalog value.
+        syncedSelectionRef.current = food.id;
+        setSelectedFoods([food]);
       }
 
       setLoaded(true);
     });
-  }, [date, entryId]);
+  }, [date, entryId, navigation]);
 
   const handleToggleFood = (food: FoodItem) => {
     setSelectedFoods(prev => {
@@ -252,24 +296,39 @@ export function AddEntryScreen() {
 
   const handleQuickAddCalories = (amount: number) => {
     const current = parseInt(calories, 10) || 0;
-    setCalories(String(current + amount));
+    setCalories(String(addCaloriesCapped(current, amount)));
   };
 
-  const isValid = usingFoodDatabase
-    ? selectedFoods.length > 0 && (isMulti || parseInt(calories, 10) > 0)
-    : parseInt(calories, 10) > 0;
+  const handleCaloriesChange = (text: string) => {
+    setCalories(sanitizeCalorieInput(text));
+  };
 
-  const handleSave = useCallback(async () => {
+  const caloriesNum = parseInt(calories, 10) || 0;
+  const caloriesError = isMulti
+    ? selectedFoods
+        .map(food => getCalorieLimitError(food.calories))
+        .find(error => error !== null) ?? null
+    : getCalorieLimitError(caloriesNum);
+
+  const isValid =
+    !entryMissing &&
+    caloriesError === null &&
+    (usingFoodDatabase
+      ? selectedFoods.length > 0 && (isMulti || caloriesNum > 0)
+      : caloriesNum > 0);
+
+  /** Persists the entry/entries. Returns true when saved (and navigated back). */
+  const saveEntries = useCallback(async (): Promise<boolean> => {
     if (usingFoodDatabase) {
       if (!selectedFoods.length) {
-        return;
+        return false;
       }
 
       if (entryId) {
         const food = selectedFoods[0];
         const num = parseInt(calories, 10) || food.calories;
-        if (num <= 0) {
-          return;
+        if (num <= 0 || num > MAX_ENTRY_CALORIES) {
+          return false;
         }
         await updateEntry(date, entryId, {
           mealType,
@@ -280,7 +339,7 @@ export function AddEntryScreen() {
           servingLabel: food.servingLabel,
         });
         navigation.goBack();
-        return;
+        return true;
       }
 
       for (let i = 0; i < selectedFoods.length; i += 1) {
@@ -304,12 +363,12 @@ export function AddEntryScreen() {
         await onMealsLogged(profile);
       }
       navigation.goBack();
-      return;
+      return true;
     }
 
     const num = parseInt(calories, 10);
-    if (!num || num <= 0) {
-      return;
+    if (!num || num <= 0 || num > MAX_ENTRY_CALORIES) {
+      return false;
     }
 
     const name =
@@ -334,6 +393,7 @@ export function AddEntryScreen() {
       }
     }
     navigation.goBack();
+    return true;
   }, [
     calories,
     customName,
@@ -347,11 +407,45 @@ export function AddEntryScreen() {
     usingFoodDatabase,
   ]);
 
+  const handleSave = useCallback(async () => {
+    if (!isValid || savingRef.current) {
+      return;
+    }
+    savingRef.current = true;
+    setSaving(true);
+    let saved = false;
+    try {
+      saved = await saveEntries();
+    } finally {
+      // After a successful save the screen is closing — keep the guard set so
+      // a tap during the pop transition can't save a second copy.
+      if (!saved) {
+        savingRef.current = false;
+        setSaving(false);
+      }
+    }
+  }, [isValid, saveEntries]);
+
   if (!loaded) {
     return (
       <Screen edges={['bottom']}>
         <View style={styles.loading}>
           <Text style={styles.loadingText}>Loading…</Text>
+        </View>
+      </Screen>
+    );
+  }
+
+  if (entryMissing) {
+    return (
+      <Screen edges={['bottom']}>
+        <View style={[styles.loading, styles.missing]}>
+          <EmptyState
+            icon="alert-circle-outline"
+            title="Entry not found"
+            message="This entry no longer exists."
+          />
+          <Button title="Go back" onPress={() => navigation.goBack()} />
         </View>
       </Screen>
     );
@@ -377,7 +471,8 @@ export function AddEntryScreen() {
           <OnboardingFooter
             title={saveTitle}
             onPress={handleSave}
-            disabled={!isValid}
+            disabled={!isValid || saving}
+            loading={saving}
           />
         }>
         <Text style={styles.dateLabel}>{dateLabel}</Text>
@@ -458,7 +553,11 @@ export function AddEntryScreen() {
               onChangeText={setCustomName}
               placeholder="What did you eat? (optional)"
             />
-            <QuickCalorieChips onAdd={handleQuickAddCalories} />
+            <QuickCalorieChips
+              onAdd={handleQuickAddCalories}
+              current={caloriesNum}
+              max={MAX_ENTRY_CALORIES}
+            />
           </FormSection>
         )}
 
@@ -479,13 +578,16 @@ export function AddEntryScreen() {
               <TextInput
                 style={styles.input}
                 value={calories}
-                onChangeText={setCalories}
+                onChangeText={handleCaloriesChange}
                 placeholder="0"
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
               />
               <Text style={styles.suffix}>kcal</Text>
             </View>
+            {caloriesError ? (
+              <Text style={styles.estimateError}>{caloriesError}</Text>
+            ) : null}
             {primaryTab === 'describe' ? (
               <Text style={styles.hint}>
                 Tap Estimate calories, then adjust the total if needed.
@@ -507,7 +609,7 @@ export function AddEntryScreen() {
               <TextInput
                 style={styles.input}
                 value={calories}
-                onChangeText={setCalories}
+                onChangeText={handleCaloriesChange}
                 placeholder="0"
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
@@ -515,6 +617,9 @@ export function AddEntryScreen() {
               />
               <Text style={styles.suffix}>kcal</Text>
             </View>
+            {caloriesError ? (
+              <Text style={styles.estimateError}>{caloriesError}</Text>
+            ) : null}
             {isMulti ? (
               <Text style={styles.hint}>
                 Each food is saved as its own entry with its listed calories.
@@ -592,6 +697,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  missing: {
+    alignItems: 'stretch',
+    padding: spacing.lg,
   },
   loadingText: {
     ...typography.body,

@@ -12,14 +12,24 @@ export function lbToKg(lb: number): number {
 }
 
 export function cmToFeetInches(cm: number): { feet: number; inches: number } {
-  const totalInches = cm / CM_PER_INCH;
+  // Round the total first so 71.7in becomes 6'0" rather than 5'12".
+  const totalInches = Math.round(cm / CM_PER_INCH);
   const feet = Math.floor(totalInches / 12);
-  const inches = Math.round(totalInches % 12);
+  const inches = totalInches % 12;
   return { feet, inches };
 }
 
 export function feetInchesToCm(feet: number, inches: number): number {
   return (feet * 12 + inches) * CM_PER_INCH;
+}
+
+/** Weight in the user's unit, rounded to one decimal (what inputs show). */
+export function toDisplayWeightValue(kg: number, unit: WeightUnit): number {
+  return Math.round((unit === 'lb' ? kgToLb(kg) : kg) * 10) / 10;
+}
+
+export function formatWeightInput(kg: number, unit: WeightUnit): string {
+  return String(toDisplayWeightValue(kg, unit));
 }
 
 export function displayWeight(kg: number, unit: WeightUnit): string {

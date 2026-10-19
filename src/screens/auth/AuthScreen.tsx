@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  BackHandler,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BrandLogo } from '../../components/BrandLogo';
 import { Button } from '../../components/Button';
@@ -71,6 +73,30 @@ export function AuthScreen({ route }: Props) {
 
     return () => clearInterval(timer);
   }, [resendSeconds]);
+
+  const returnToEmailStep = useCallback(() => {
+    setStep('email');
+    setOtp('');
+    setEmailError(null);
+    setInfo(null);
+    setResendSeconds(0);
+  }, []);
+
+  // Android back on the code step goes back to the email step instead of
+  // leaving the screen (exiting the app, or closing the "Save your progress"
+  // modal). On the email step the default back behavior applies.
+  useFocusEffect(
+    useCallback(() => {
+      if (step !== 'otp') {
+        return undefined;
+      }
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        returnToEmailStep();
+        return true;
+      });
+      return () => sub.remove();
+    }, [step, returnToEmailStep]),
+  );
 
   const handleContinueAsGuest = async () => {
     setGuestLoading(true);
@@ -192,13 +218,7 @@ export function AuthScreen({ route }: Props) {
     }
   };
 
-  const handleChangeEmail = () => {
-    setStep('email');
-    setOtp('');
-    setEmailError(null);
-    setInfo(null);
-    setResendSeconds(0);
-  };
+  const handleChangeEmail = returnToEmailStep;
 
   const title =
     step === 'otp'
@@ -354,6 +374,7 @@ export function AuthScreen({ route }: Props) {
                 title={step === 'email' ? 'Continue with email' : 'Verify code'}
                 onPress={step === 'email' ? handleSendCode : handleVerifyCode}
                 loading={loading}
+                disabled={googleLoading || guestLoading}
                 style={styles.submitBtn}
               />
 

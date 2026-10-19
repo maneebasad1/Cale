@@ -9,6 +9,26 @@ import {
 
 let client: SupabaseClient | null = null;
 
+/** RN's fetch never times out on its own; a stalled request would hang sync forever. */
+const REQUEST_TIMEOUT_MS = 20_000;
+
+const fetchWithTimeout: typeof fetch = (input, init) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  // Honor a caller-supplied signal too.
+  const outer = init?.signal;
+  if (outer) {
+    if (outer.aborted) {
+      controller.abort();
+    } else {
+      outer.addEventListener('abort', () => controller.abort());
+    }
+  }
+  return fetch(input, { ...init, signal: controller.signal }).finally(() =>
+    clearTimeout(timer),
+  );
+};
+
 export function getSupabase(): SupabaseClient {
   if (!isSupabaseConfigured()) {
     throw new Error(
@@ -23,6 +43,9 @@ export function getSupabase(): SupabaseClient {
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,
+      },
+      global: {
+        fetch: fetchWithTimeout,
       },
     });
   }

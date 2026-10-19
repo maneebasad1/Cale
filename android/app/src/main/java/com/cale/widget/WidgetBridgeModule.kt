@@ -33,6 +33,13 @@ class WidgetBridgeModule(
         .putString(KEY_DATE, data.getStringOrEmpty("dateLabel"))
         .putBoolean(KEY_IS_OVER, data.hasKey("isOver") && data.getBoolean("isOver"))
         .putBoolean(KEY_READY, data.hasKey("ready") && data.getBoolean("ready"))
+        .putString(KEY_DATE_KEY, data.getStringOrEmpty("dateKey"))
+        .putLong(KEY_TARGET_VALUE, data.getNumberOrZero("targetValue").toLong())
+        .putInt(KEY_STREAK_COUNT, data.getNumberOrZero("streakCount").toInt())
+        .putBoolean(
+          KEY_LOGGED_TODAY,
+          data.hasKey("loggedToday") && data.getBoolean("loggedToday"),
+        )
         .apply()
 
       refreshWidgets(reactContext)
@@ -53,6 +60,10 @@ class WidgetBridgeModule(
     const val KEY_DATE = "dateLabel"
     const val KEY_IS_OVER = "isOver"
     const val KEY_READY = "ready"
+    const val KEY_DATE_KEY = "dateKey"
+    const val KEY_TARGET_VALUE = "targetValue"
+    const val KEY_STREAK_COUNT = "streakCount"
+    const val KEY_LOGGED_TODAY = "loggedToday"
 
     fun refreshWidgets(context: Context) {
       val manager = AppWidgetManager.getInstance(context)
@@ -75,3 +86,6 @@ class WidgetBridgeModule(
 
 private fun ReadableMap.getStringOrEmpty(key: String): String =
   if (hasKey(key) && !isNull(key)) getString(key) ?: "" else ""
+
+private fun ReadableMap.getNumberOrZero(key: String): Double =
+  if (hasKey(key) && !isNull(key)) getDouble(key) else 0.0

@@ -6,9 +6,17 @@ const QUICK_AMOUNTS = [100, 250, 500];
 
 interface QuickCalorieChipsProps {
   onAdd: (amount: number) => void;
+  /** Current value; chips are disabled once it reaches `max`. */
+  current?: number;
+  max?: number;
 }
 
-export function QuickCalorieChips({ onAdd }: QuickCalorieChipsProps) {
+export function QuickCalorieChips({
+  onAdd,
+  current = 0,
+  max,
+}: QuickCalorieChipsProps) {
+  const atMax = max !== undefined && current >= max;
   return (
     <View style={styles.container}>
       <Text style={styles.label}>Quick add</Text>
@@ -16,8 +24,10 @@ export function QuickCalorieChips({ onAdd }: QuickCalorieChipsProps) {
         {QUICK_AMOUNTS.map(amount => (
           <TouchableOpacity
             key={amount}
-            style={styles.chip}
+            style={[styles.chip, atMax && styles.chipDisabled]}
             onPress={() => onAdd(amount)}
+            disabled={atMax}
+            accessibilityState={{ disabled: atMax }}
             activeOpacity={0.7}>
             <Text style={styles.chipText}>+{amount}</Text>
           </TouchableOpacity>
@@ -47,6 +57,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.noriMute,
     borderWidth: 1,
     borderColor: colors.primary,
+  },
+  chipDisabled: {
+    opacity: 0.4,
   },
   chipText: {
     ...typography.label,

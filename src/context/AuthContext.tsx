@@ -7,7 +7,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
+import { Alert, AppState, type AppStateStatus } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { isSupabaseConfigured } from '../config/supabase';
 import { getSupabase } from '../lib/supabase';
@@ -17,13 +18,20 @@ import {
   getCachedAuthUser,
   saveCachedAuthUser,
 } from '../services/authCache';
+import { deleteAccountOnServer } from '../services/accountService';
 import { subscribeToAuthDeepLinks } from '../services/authDeepLink';
 import { getGuestMode, setGuestMode } from '../services/guestMode';
 import { signInWithGoogleNative, signOutGoogle } from '../services/googleAuth';
-import { localIsEmpty, resetLocalEntityStore } from '../services/localStore';
+import {
+  localGetHydratedUserId,
+  localIsEmpty,
+  resetLocalEntityStore,
+} from '../services/localStore';
+import { cancelAllReminders } from '../services/notificationService';
 import { withTimeout } from '../utils/networkTimeout';
 
 const SESSION_INIT_TIMEOUT_MS = 4_000;
+const SIGN_OUT_TIMEOUT_MS = 5_000;
 /** Match Supabase SMTP “minimum interval per user” (default 60s). */
 const OTP_SEND_COOLDOWN_MS = 60_000;
 
@@ -56,6 +64,8 @@ interface AuthContextValue {
   signInWithGoogle: () => Promise<{ error: string | null }>;
   continueAsGuest: () => Promise<void>;
   signOut: () => Promise<void>;
+  /** Deletes the account on the server, then runs the full sign-out path. */
+  deleteAccount: () => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -70,6 +80,7 @@ const AuthContext = createContext<AuthContextValue>({
   signInWithGoogle: async () => ({ error: null }),
   continueAsGuest: async () => {},
   signOut: async () => {},
+  deleteAccount: async () => ({ error: null }),
 });
 
 async function getSessionWithTimeout(): Promise<Session | null> {
@@ -86,6 +97,48 @@ async function getSessionWithTimeout(): Promise<Session | null> {
   }
 }
 
+async function isOnline(): Promise<boolean> {
+  try {
+    const state = await NetInfo.fetch();
+    return Boolean(state.isConnected) && state.isInternetReachable !== false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Clears the Supabase session from storage even when offline. A global
+ * sign-out needs the network and, on failure, keeps the stored session —
+ * which would sign the user straight back in on next launch.
+ */
+async function signOutSupabase(): Promise<void> {
+  const auth = getSupabase().auth;
+  try {
+    const { error } = await withTimeout(
+      auth.signOut(),
+      SIGN_OUT_TIMEOUT_MS,
+      'Sign out timed out',
+    );
+    if (!error) {
+      return;
+    }
+  } catch {
+    // Fall through to local sign-out.
+  }
+  try {
+    await withTimeout(
+      auth.signOut({ scope: 'local' }),
+      SIGN_OUT_TIMEOUT_MS,
+      'Local sign out timed out',
+    );
+  } catch {
+    // Local state is still cleared by the caller.
+  }
+}
+
+const AUTH_LINK_ERROR_MESSAGE =
+  'This link has expired or was already used. Request a new code.';
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [offlineUser, setOfflineUser] = useState<User | null>(null);
@@ -93,6 +146,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true);
   const explicitSignOutRef = useRef(false);
   const lastUserIdRef = useRef<string | null | undefined>(undefined);
+  /** Avoid repeating the "session expired" alert for duplicate SIGNED_OUT events. */
+  const sessionExpiredAlertedRef = useRef(false);
 
   useEffect(() => {
     const restoreGuest = async (): Promise<boolean> => {
@@ -146,6 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await resetLocalEntityStore();
         }
         lastUserIdRef.current = signedInUserId;
+        sessionExpiredAlertedRef.current = false;
         await saveCachedAuthUser({
           id: signedInUserId,
           email: nextSession.user.email,
@@ -171,7 +227,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (event === 'SIGNED_OUT' && lastUserIdRef.current) {
+        if (!(await isOnline())) {
+          // Failed refresh while offline: keep the user in the app on the
+          // cached/offline user; sync resumes when the session recovers.
+          setAuthLoading(false);
+          return;
+        }
+
+        // Online and not explicit: the server ended the session (revoked /
+        // expired refresh token). Drop auth state but KEEP the local store
+        // and sync queue so signing back in as the same user uploads pending
+        // changes. lastUserIdRef keeps the old id so a different account
+        // signing in still resets the local store.
+        await clearCachedAuthUser();
+        setIsGuest(false);
+        setOfflineUser(null);
+        setSession(null);
         setAuthLoading(false);
+        if (!sessionExpiredAlertedRef.current) {
+          sessionExpiredAlertedRef.current = true;
+          Alert.alert(
+            'Signed out',
+            'Your session expired. Please sign in again.',
+          );
+        }
         return;
       }
 
@@ -212,7 +291,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const appStateSub = AppState.addEventListener('change', onAppStateChange);
-    const unsubscribeDeepLinks = subscribeToAuthDeepLinks();
+    const unsubscribeDeepLinks = subscribeToAuthDeepLinks(() => {
+      Alert.alert('Sign-in link failed', AUTH_LINK_ERROR_MESSAGE);
+    });
 
     return () => {
       listener.subscription.unsubscribe();
@@ -281,6 +362,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const continueAsGuest = useCallback(async () => {
+    // Local data left behind by an expired account session belongs to that
+    // account — don't hand it to a guest.
+    if (lastUserIdRef.current || (await localGetHydratedUserId())) {
+      await resetLocalEntityStore();
+    }
     await setGuestMode(true);
     lastUserIdRef.current = null;
     setIsGuest(true);
@@ -288,18 +374,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     explicitSignOutRef.current = true;
-    await signOutGoogle();
-    if (isSupabaseConfigured()) {
-      await getSupabase().auth.signOut();
+    try {
+      await cancelAllReminders().catch(() => undefined);
+      await signOutGoogle();
+      if (isSupabaseConfigured()) {
+        await signOutSupabase();
+      }
+      await clearCachedAuthUser();
+      await resetLocalEntityStore();
+      await setGuestMode(false);
+      lastUserIdRef.current = null;
+      setIsGuest(false);
+      setOfflineUser(null);
+      setSession(null);
+      setAuthLoading(false);
+    } finally {
+      // Supabase delivers SIGNED_OUT synchronously inside signOut(), so the
+      // flag has been consumed by now. If no event fired (timeout / no
+      // session), don't let a stale flag swallow a later real session end.
+      explicitSignOutRef.current = false;
     }
-    await clearCachedAuthUser();
-    await resetLocalEntityStore();
-    await setGuestMode(false);
-    lastUserIdRef.current = null;
-    setIsGuest(false);
-    setOfflineUser(null);
-    setSession(null);
   }, []);
+
+  const deleteAccount = useCallback(async () => {
+    const { error } = await deleteAccountOnServer();
+    if (error) {
+      return { error };
+    }
+    await signOut();
+    return { error: null };
+  }, [signOut]);
 
   const user = session?.user ?? offlineUser;
   const isAuthenticated = Boolean(user);
@@ -318,11 +422,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signInWithGoogle,
       continueAsGuest,
       signOut,
+      deleteAccount,
     }),
     [
       authLoading,
       canUseApp,
       continueAsGuest,
+      deleteAccount,
       isAuthenticated,
       isGuest,
       sendEmailOtp,

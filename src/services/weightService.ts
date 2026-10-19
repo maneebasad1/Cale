@@ -3,7 +3,7 @@ import { formatDateKey } from '../utils/date';
 import { createId } from '../utils/id';
 import {
   localGetWeightEntries,
-  localSaveWeightEntries,
+  localUpdateWeightEntries,
 } from './localStore';
 import { enqueueSync } from './syncQueue';
 
@@ -16,17 +16,18 @@ export async function addWeightEntry(
   weightKg: number,
   date: string = formatDateKey(),
 ): Promise<WeightEntry> {
-  const entries = await localGetWeightEntries();
-  const existing = entries.find(e => e.date === date);
-  const entry: WeightEntry = existing
-    ? { ...existing, weightKg }
-    : { id: createId(), date, weightKg };
+  let existing: WeightEntry | undefined;
+  let entry!: WeightEntry;
+  await localUpdateWeightEntries(entries => {
+    existing = entries.find(e => e.date === date);
+    entry = existing
+      ? { ...existing, weightKg }
+      : { id: createId(), date, weightKg };
+    return existing
+      ? entries.map(e => (e.date === date ? entry : e))
+      : [entry, ...entries];
+  });
 
-  const next = existing
-    ? entries.map(e => (e.date === date ? entry : e))
-    : [entry, ...entries];
-
-  await localSaveWeightEntries(next);
   await enqueueSync({
     entity: 'weightEntry',
     operation: existing ? 'update' : 'create',
@@ -37,8 +38,7 @@ export async function addWeightEntry(
 }
 
 export async function deleteWeightEntry(id: string): Promise<void> {
-  const entries = await localGetWeightEntries();
-  await localSaveWeightEntries(entries.filter(e => e.id !== id));
+  await localUpdateWeightEntries(entries => entries.filter(e => e.id !== id));
   await enqueueSync({
     entity: 'weightEntry',
     operation: 'delete',

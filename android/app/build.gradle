@@ -114,12 +114,34 @@ android {
         release {
             // Uses android/keystore.properties + cale-release.keystore when present.
             // see https://reactnative.dev/docs/signed-apk-android
+            // The debug fallback only keeps Gradle sync / non-packaging release
+            // tasks (lint, compile) working; packaging a release without the
+            // keystore fails below instead of shipping a debug-signed build.
             signingConfig keystorePropertiesFile.exists()
                 ? signingConfigs.release
                 : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
+    }
+}
+
+// Fail loudly when a release artifact would be signed with the debug keystore.
+// Checked against the task graph so IDE sync and debug builds are unaffected.
+gradle.taskGraph.whenReady { graph ->
+    if (keystorePropertiesFile.exists()) {
+        return
+    }
+    def releasePackagingTask = graph.allTasks.find { task ->
+        task.project == project &&
+            task.name ==~ /^(assemble|bundle|package|install|sign)\w*Release\w*$/
+    }
+    if (releasePackagingTask != null) {
+        throw new GradleException(
+            "Release signing is not configured: ${keystorePropertiesFile} is missing " +
+            "(needed by :app:${releasePackagingTask.name}). Copy keystore.properties.example " +
+            "to android/keystore.properties and fill in the release keystore details."
+        )
     }
 }
 

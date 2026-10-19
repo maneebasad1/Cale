@@ -13,6 +13,7 @@ import { Screen } from '../../components/Screen';
 import { colors, spacing, typography } from '../../constants/theme';
 import {
   formatMealRemindersSummary,
+  openNotificationSettings,
   sendTestNotification,
   syncDailyReminder,
 } from '../../services/notificationService';
@@ -80,8 +81,25 @@ export function ProfileNotificationsScreen() {
       ),
     };
     await saveProfile(updated);
-    await syncDailyReminder(updated);
+    const { granted } = await syncDailyReminder(updated);
     setProfile(updated);
+
+    if (!granted) {
+      Alert.alert(
+        'Notifications are blocked',
+        'Your reminder times were saved, but CALE isn’t allowed to send notifications. Turn them on in Settings to get meal reminders.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          {
+            text: 'Open settings',
+            onPress: () => {
+              void openNotificationSettings();
+            },
+          },
+        ],
+      );
+      return;
+    }
 
     const mealSummary = isAnyMealReminderEnabled(updated)
       ? formatMealRemindersSummary(mealReminders)

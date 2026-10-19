@@ -37,12 +37,40 @@ export function calculateMaintenance(
   return Math.round(bmr * ACTIVITY_MULTIPLIERS[activityLevel]);
 }
 
+/** Tolerance so float noise from lb↔kg conversions doesn't block "reached". */
+const GOAL_REACHED_TOLERANCE_KG = 0.01;
+
+/**
+ * True when the current weight is already at or past the goal in the goal's
+ * direction (lose: current <= goal, gain: current >= goal). Maintain never
+ * "reaches" anything.
+ */
+export function isGoalReached(
+  goalType: GoalType,
+  currentWeightKg: number,
+  goalWeightKg: number,
+): boolean {
+  if (goalType === 'lose') {
+    return currentWeightKg <= goalWeightKg + GOAL_REACHED_TOLERANCE_KG;
+  }
+  if (goalType === 'gain') {
+    return currentWeightKg >= goalWeightKg - GOAL_REACHED_TOLERANCE_KG;
+  }
+  return false;
+}
+
 export function calculateCalorieAdjustment(
   goalType: GoalType,
   currentWeightKg: number,
   goalWeightKg: number,
 ): number {
   if (goalType === 'maintain') {
+    return 0;
+  }
+
+  // Goal reached or overshot: eat at maintenance instead of continuing the
+  // deficit/surplus past the goal.
+  if (isGoalReached(goalType, currentWeightKg, goalWeightKg)) {
     return 0;
   }
 
@@ -62,11 +90,12 @@ export function calculateDailyTarget(
   gender: Gender,
   goalType: GoalType = 'lose',
 ): number {
-  if (goalType === 'maintain') {
-    return maintenanceCalories;
-  }
-
-  const raw = maintenanceCalories + calorieAdjustment;
+  // Maintain gets the same safety floor so a bad maintenance estimate (or a
+  // low custom value) can't produce a negative/absurd target.
+  const raw =
+    goalType === 'maintain'
+      ? maintenanceCalories
+      : maintenanceCalories + calorieAdjustment;
   return Math.max(MIN_CALORIES[gender], Math.round(raw));
 }
 

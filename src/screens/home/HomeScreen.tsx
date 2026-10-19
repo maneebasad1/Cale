@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   RefreshControl,
   ScrollView,
@@ -24,11 +24,12 @@ import { useAuth } from '../../context/AuthContext';
 import { drainSyncQueue } from '../../services/sync';
 import { useAddEntryNavigation } from '../../hooks/useAddEntryNavigation';
 import { useMyFoodsNavigation } from '../../hooks/useMyFoodsNavigation';
+import { useToday } from '../../hooks/useToday';
 import {
   deleteEntry,
   getAllLogs,
+  getDailyLog,
   getProfile,
-  getTodayLog,
   getTotalCalories,
   saveProfile,
 } from '../../services/storage';
@@ -38,7 +39,7 @@ import {
 } from '../../services/weightService';
 import type { CalorieEntry, UserProfile } from '../../types';
 import { getTrailingAverageCalories } from '../../utils/calorieStats';
-import { formatDateKey, formatDisplayDate } from '../../utils/date';
+import { formatDisplayDate } from '../../utils/date';
 import { getCurrentStreak } from '../../utils/streak';
 import { navigateToAuth } from '../../navigation/navigationRef';
 import {
@@ -52,8 +53,12 @@ export function HomeScreen() {
   const { openAddEntry } = useAddEntryNavigation();
   const { openMyFoods } = useMyFoodsNavigation();
   const insets = useSafeAreaInsets();
+  const today = useToday();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [entries, setEntries] = useState<CalorieEntry[]>([]);
+  /** Date the entry list was loaded for — used by edit/delete. */
+  const [entriesDate, setEntriesDate] = useState(today);
+  const loadIdRef = useRef(0);
   const [streak, setStreak] = useState(0);
   const [weeklyAvg, setWeeklyAvg] = useState(0);
   const [showWeightPrompt, setShowWeightPrompt] = useState(false);
@@ -61,15 +66,21 @@ export function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
-    const today = formatDateKey();
+    const loadId = loadIdRef.current + 1;
+    loadIdRef.current = loadId;
     const [userProfile, log, logs, latestWeight] = await Promise.all([
       getProfile(),
-      getTodayLog(),
+      getDailyLog(today),
       getAllLogs(),
       getLatestWeightEntry(),
     ]);
+    if (loadId !== loadIdRef.current) {
+      // A newer load (e.g. after the date rolled over) superseded this one.
+      return;
+    }
     setProfile(userProfile);
     setEntries(log.entries);
+    setEntriesDate(today);
     setStreak(getCurrentStreak(logs, today));
     setWeeklyAvg(getTrailingAverageCalories(logs, today));
 
@@ -92,8 +103,10 @@ export function HomeScreen() {
       !dismissedToday &&
         shouldPromptWeightCheckIn(latestWeight, today),
     );
-  }, [isGuest]);
+  }, [isGuest, today]);
 
+  // Re-runs when `today` changes (loadData depends on it), so the screen
+  // reloads after midnight / on resume into a new day.
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -118,11 +131,11 @@ export function HomeScreen() {
   };
 
   const handleEdit = (entry: CalorieEntry) => {
-    openAddEntry({ date: formatDateKey(), entryId: entry.id });
+    openAddEntry({ date: entriesDate, entryId: entry.id });
   };
 
   const handleDelete = async (entryId: string) => {
-    await deleteEntry(formatDateKey(), entryId);
+    await deleteEntry(entriesDate, entryId);
     await loadData();
   };
 
@@ -132,7 +145,7 @@ export function HomeScreen() {
     }
     const updated = {
       ...profile,
-      lastWeightPromptDate: formatDateKey(),
+      lastWeightPromptDate: today,
     };
     await saveProfile(updated);
     setProfile(updated);
@@ -144,7 +157,7 @@ export function HomeScreen() {
     setShowSaveBanner(false);
   };
 
-  const total = getTotalCalories({ date: formatDateKey(), entries });
+  const total = getTotalCalories({ date: entriesDate, entries });
   const target = profile?.dailyTargetCalories ?? profile?.maintenanceCalories ?? 0;
   const fabOffset = 60 + spacing.lg * 2 + insets.bottom;
 
@@ -175,7 +188,7 @@ export function HomeScreen() {
           </View>
         </View>
 
-        <Text style={styles.date}>{formatDisplayDate(formatDateKey())}</Text>
+        <Text style={styles.date}>{formatDisplayDate(today)}</Text>
 
         <StreakBadge streak={streak} />
 
@@ -213,7 +226,7 @@ export function HomeScreen() {
         />
       </ScrollView>
 
-      <FabButton onPress={() => openAddEntry({ date: formatDateKey() })} />
+      <FabButton onPress={() => openAddEntry({ date: today })} />
     </Screen>
   );
 }

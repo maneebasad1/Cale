@@ -21,6 +21,9 @@ import {
   resolveAdjustmentPreview,
 } from '../../utils/weightTimeline';
 import { displayWeight, kgToLb, lbToKg } from '../../utils/units';
+import { calculateDailyTarget } from '../../utils/bmr';
+import { validateGoalWeightKg } from '../../utils/bodyValidation';
+import { parseDecimal } from '../../utils/parseDecimal';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'Goal'>;
 
@@ -38,11 +41,24 @@ export function GoalScreen({ route, navigation }: Props) {
   const [adjustmentIsCustom, setAdjustmentIsCustom] = useState(false);
 
   const goalWeightKg = useMemo(() => {
-    const num = parseFloat(goalWeight);
+    const num = parseDecimal(goalWeight);
     if (!num) {
       return 0;
     }
-    return weightUnit === 'kg' ? num : lbToKg(num);
+    const kg = weightUnit === 'kg' ? num : lbToKg(num);
+    // Out-of-range goals don't drive the adjustment/preview.
+    return validateGoalWeightKg(kg) ? 0 : kg;
+  }, [goalWeight, weightUnit]);
+
+  const goalWeightRangeError = useMemo(() => {
+    if (!goalWeight.trim()) {
+      return null;
+    }
+    const num = parseDecimal(goalWeight);
+    return validateGoalWeightKg(
+      weightUnit === 'kg' ? num : lbToKg(num),
+      weightUnit,
+    );
   }, [goalWeight, weightUnit]);
 
   const autoMagnitude = useMemo(() => {
@@ -119,7 +135,13 @@ export function GoalScreen({ route, navigation }: Props) {
   };
 
   const validationHint = () => {
-    if (!goalType || !goalWeightKg) {
+    if (!goalType || goalType === 'maintain') {
+      return null;
+    }
+    if (goalWeightRangeError) {
+      return goalWeightRangeError;
+    }
+    if (!goalWeightKg) {
       return null;
     }
     if (goalType === 'lose' && goalWeightKg >= weightKg) {
@@ -152,7 +174,12 @@ export function GoalScreen({ route, navigation }: Props) {
       goalType: 'maintain',
       goalWeightKg: weightKg,
       calorieAdjustment: 0,
-      dailyTargetCalories: maintenanceCalories,
+      dailyTargetCalories: calculateDailyTarget(
+        maintenanceCalories,
+        0,
+        gender,
+        'maintain',
+      ),
       adjustmentIsCustom: false,
     });
   };

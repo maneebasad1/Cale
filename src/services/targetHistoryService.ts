@@ -21,6 +21,7 @@ import {
   localGetTargetHistory,
   localGetWeightEntries,
   localSaveTargetHistory,
+  localUpdateTargetHistory,
 } from './localStore';
 import { enqueueSync } from './syncQueue';
 
@@ -67,11 +68,10 @@ export async function backfillTargetHistoryIfNeeded(
     return localGetTargetHistory();
   }
 
-  const [logs, workouts, weights, existing] = await Promise.all([
+  const [logs, workouts, weights] = await Promise.all([
     localGetAllLogs(),
     localGetAllWorkouts(),
     localGetWeightEntries(),
-    localGetTargetHistory(),
   ]);
 
   const today = formatDateKey();
@@ -81,21 +81,19 @@ export async function backfillTargetHistoryIfNeeded(
     weights.map(entry => entry.date),
   );
   const startDate = inferTargetHistoryStartDate(activityDates, today);
-  const result = backfillTargetHistorySnapshots(
-    existing,
-    profileTargets(profile),
-    startDate,
-    today,
-  );
 
-  if (result.changed) {
-    await persistTargetHistory(result.snapshots);
-    await AsyncStorage.setItem(LOCAL_KEYS.targetHistoryBackfillV1, '1');
-    return result.snapshots;
-  }
+  const { snapshots } = await updateTargetHistory(existing => {
+    const result = backfillTargetHistorySnapshots(
+      existing,
+      profileTargets(profile),
+      startDate,
+      today,
+    );
+    return result.changed ? result.snapshots : existing;
+  });
 
   await AsyncStorage.setItem(LOCAL_KEYS.targetHistoryBackfillV1, '1');
-  return existing;
+  return snapshots;
 }
 
 export async function ensureTargetHistorySeeded(
@@ -106,54 +104,71 @@ export async function ensureTargetHistorySeeded(
     return snapshots;
   }
 
-  const seeded = seedInitialTargetSnapshot(
-    formatDateKey(),
-    profileTargets(profile),
+  const seeded = await updateTargetHistory(existing =>
+    existing.length
+      ? existing
+      : seedInitialTargetSnapshot(formatDateKey(), profileTargets(profile)),
   );
-  await persistTargetHistory(seeded);
-  return seeded;
+  return seeded.snapshots;
 }
 
 export async function recordTargetSnapshotIfChanged(
   profile: UserProfile,
   effectiveFrom: string = formatDateKey(),
 ): Promise<void> {
-  const existing = await localGetTargetHistory();
   const next = profileTargets(profile);
 
-  if (!existing.length) {
-    await persistTargetHistory(seedInitialTargetSnapshot(effectiveFrom, next));
-    return;
-  }
+  await updateTargetHistory(existing => {
+    if (!existing.length) {
+      return seedInitialTargetSnapshot(effectiveFrom, next);
+    }
 
-  const updated = appendTargetSnapshot(existing, effectiveFrom, next, next);
-  const sortedExisting = sortTargetSnapshots(existing);
-  const sortedUpdated = sortTargetSnapshots(updated);
+    const updated = appendTargetSnapshot(existing, effectiveFrom, next, next);
+    const sortedExisting = sortTargetSnapshots(existing);
+    const sortedUpdated = sortTargetSnapshots(updated);
 
-  if (
-    sortedExisting.length === sortedUpdated.length &&
-    sortedExisting.every(
-      (snap, index) =>
-        snap.effectiveFrom === sortedUpdated[index]?.effectiveFrom &&
-        snap.dailyTargetCalories ===
-          sortedUpdated[index]?.dailyTargetCalories &&
-        snap.maintenanceCalories === sortedUpdated[index]?.maintenanceCalories,
-    )
-  ) {
-    return;
-  }
+    if (
+      sortedExisting.length === sortedUpdated.length &&
+      sortedExisting.every(
+        (snap, index) =>
+          snap.effectiveFrom === sortedUpdated[index]?.effectiveFrom &&
+          snap.dailyTargetCalories ===
+            sortedUpdated[index]?.dailyTargetCalories &&
+          snap.maintenanceCalories ===
+            sortedUpdated[index]?.maintenanceCalories,
+      )
+    ) {
+      return existing;
+    }
 
-  await persistTargetHistory(updated);
+    return updated;
+  });
 }
 
-async function persistTargetHistory(snapshots: TargetSnapshot[]): Promise<void> {
-  await localSaveTargetHistory(snapshots);
-  await enqueueSync({
-    entity: 'targetHistory',
-    operation: 'update',
-    payload: { snapshots },
-    coalesceKey: 'targetHistory',
+/**
+ * Atomically read-modify-write local target history, then queue the latest
+ * full history for upload when it changed. Return `existing` to skip.
+ */
+async function updateTargetHistory(
+  updater: (existing: TargetSnapshot[]) => TargetSnapshot[],
+): Promise<{ snapshots: TargetSnapshot[]; changed: boolean }> {
+  let changed = false;
+  const snapshots = await localUpdateTargetHistory(existing => {
+    const next = updater(existing);
+    changed = next !== existing;
+    return next;
   });
+  if (changed) {
+    // Queue the latest local state (not `snapshots`) so that when two updates
+    // race, whichever enqueues last still uploads the newest history.
+    await enqueueSync({
+      entity: 'targetHistory',
+      operation: 'update',
+      payload: { snapshots: await localGetTargetHistory() },
+      coalesceKey: 'targetHistory',
+    });
+  }
+  return { snapshots, changed };
 }
 
 export async function replaceTargetHistoryFromRemote(

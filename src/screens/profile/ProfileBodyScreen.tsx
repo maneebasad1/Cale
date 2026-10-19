@@ -32,11 +32,22 @@ import {
 import {
   cmToFeetInches,
   feetInchesToCm,
+  formatWeightInput,
   kgToLb,
   lbToKg,
+  toDisplayWeightValue,
 } from '../../utils/units';
+import {
+  validateAge,
+  validateFeetInches,
+  validateHeightCm,
+  validateWeightKg,
+} from '../../utils/bodyValidation';
+import { parseDecimal } from '../../utils/parseDecimal';
+import { useApp } from '../../context/AppContext';
 
 export function ProfileBodyScreen() {
+  const { refreshProfile } = useApp();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
   const [heightUnit, setHeightUnit] = useState<HeightUnit>('cm');
@@ -59,13 +70,7 @@ export function ProfileBodyScreen() {
     setProfile(p);
     setWeightUnit(p.weightUnit);
     setHeightUnit(p.heightUnit);
-    setWeight(
-      String(
-        Math.round(
-          (p.weightUnit === 'kg' ? p.weightKg : kgToLb(p.weightKg)) * 10,
-        ) / 10,
-      ),
-    );
+    setWeight(formatWeightInput(p.weightKg, p.weightUnit));
     if (p.heightUnit === 'cm') {
       setHeight(String(Math.round(p.heightCm)));
     } else {
@@ -86,30 +91,63 @@ export function ProfileBodyScreen() {
     }, [loadProfile]),
   );
 
+  /**
+   * Weight in kg from the input. If the number shown still equals the stored
+   * weight's display value (in the current unit), keep the stored kg exactly
+   * so an untouched field doesn't drift through rounding/lb→kg conversion.
+   */
+  const resolveWeightKg = (p: UserProfile): number => {
+    const num = parseDecimal(weight);
+    if (
+      Number.isFinite(num) &&
+      Math.abs(num - toDisplayWeightValue(p.weightKg, weightUnit)) < 1e-9
+    ) {
+      return p.weightKg;
+    }
+    return weightUnit === 'kg' ? num : lbToKg(num);
+  };
+
+  /** Same idea for height: unchanged display keeps the stored cm. */
+  const resolveHeightCm = (p: UserProfile): number => {
+    if (heightUnit === 'cm') {
+      const num = parseDecimal(height);
+      if (num === Math.round(p.heightCm)) {
+        return p.heightCm;
+      }
+      return num;
+    }
+    const feet = parseInt(heightFeet, 10) || 0;
+    const inches = parseInt(heightInches, 10) || 0;
+    const stored = cmToFeetInches(p.heightCm);
+    if (feet === stored.feet && inches === stored.inches) {
+      return p.heightCm;
+    }
+    return feetInchesToCm(feet, inches);
+  };
+
   const handleSave = async () => {
     if (!profile) {
       return;
     }
 
-    const weightNum = parseFloat(weight);
-    const ageNum = parseInt(age, 10);
+    const ageNum = Number(age.trim());
+    const heightCm = resolveHeightCm(profile);
+    const weightKg = resolveWeightKg(profile);
 
-    let heightCm: number;
-    if (heightUnit === 'cm') {
-      heightCm = parseFloat(height);
-    } else {
-      heightCm = feetInchesToCm(
-        parseInt(heightFeet, 10) || 0,
-        parseInt(heightInches, 10) || 0,
-      );
-    }
-
-    if (!weightNum || !heightCm || !ageNum) {
-      Alert.alert('Check your details', 'Fill in every field with a valid value.');
+    const validationError =
+      validateWeightKg(weightKg, weightUnit) ??
+      (heightUnit === 'ft_in'
+        ? validateFeetInches(
+            parseInt(heightFeet, 10) || 0,
+            parseInt(heightInches, 10) || 0,
+          )
+        : null) ??
+      validateHeightCm(heightCm, heightUnit) ??
+      validateAge(ageNum);
+    if (validationError) {
+      Alert.alert('Check your details', validationError);
       return;
     }
-
-    const weightKg = weightUnit === 'kg' ? weightNum : lbToKg(weightNum);
 
     let maintenanceCalories: number | undefined;
     if (maintenanceIsCustom) {
@@ -142,6 +180,7 @@ export function ProfileBodyScreen() {
       const updated = buildUpdatedProfile(profile, updates);
       await saveProfile(updated);
       setProfile(updated);
+      await refreshProfile();
       Alert.alert(
         'Settings saved',
         `Your daily target is now ${updated.dailyTargetCalories.toLocaleString()} kcal/day.`,
@@ -168,16 +207,13 @@ export function ProfileBodyScreen() {
     );
   }
 
+  // Branch on the current unit toggle (not the saved profile unit), falling
+  // back to stored values while a field is empty or mid-edit.
+  const liveWeightKg = resolveWeightKg(profile);
+  const liveHeightCm = resolveHeightCm(profile);
   const autoMaintenance = calculateMaintenance(
-    profile.weightUnit === 'kg'
-      ? parseFloat(weight) || profile.weightKg
-      : lbToKg(parseFloat(weight) || kgToLb(profile.weightKg)),
-    heightUnit === 'cm'
-      ? parseFloat(height) || profile.heightCm
-      : feetInchesToCm(
-          parseInt(heightFeet, 10) || 0,
-          parseInt(heightInches, 10) || 0,
-        ) || profile.heightCm,
+    liveWeightKg > 0 ? liveWeightKg : profile.weightKg,
+    liveHeightCm > 0 ? liveHeightCm : profile.heightCm,
     parseInt(age, 10) || profile.age,
     gender,
     activityLevel,
@@ -244,7 +280,7 @@ export function ProfileBodyScreen() {
           value={weightUnit}
           onChange={unit => {
             if (weight) {
-              const num = parseFloat(weight);
+              const num = parseDecimal(weight);
               if (!isNaN(num)) {
                 setWeight(
                   String(
@@ -276,7 +312,7 @@ export function ProfileBodyScreen() {
           value={heightUnit}
           onChange={unit => {
             if (unit === 'ft_in' && height) {
-              const cm = parseFloat(height);
+              const cm = parseDecimal(height);
               if (!isNaN(cm)) {
                 const { feet, inches } = cmToFeetInches(cm);
                 setHeightFeet(String(feet));

@@ -12,6 +12,7 @@ import { colors, radii, spacing, typography } from '../../constants/theme';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import type { Gender } from '../../types';
 import { getOnboardingCaloriePreview } from '../../utils/bmr';
+import { validateAge } from '../../utils/bodyValidation';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'PersonalInfo'>;
 
@@ -20,15 +21,16 @@ export function PersonalInfoScreen({ route, navigation }: Props) {
   const [age, setAge] = useState('');
   const [gender, setGender] = useState<Gender | null>(null);
 
-  const ageNum = parseInt(age, 10);
+  const ageNum = Number(age.trim());
+  const ageError = age.trim() ? validateAge(ageNum) : null;
   const preview =
-    ageNum > 0 && gender
+    age.trim() && !ageError && gender
       ? getOnboardingCaloriePreview(weightKg, heightCm, ageNum, gender)
       : null;
   const isValid = () => Boolean(preview);
 
   const handleContinue = () => {
-    if (!ageNum || !gender) {
+    if (!age.trim() || ageError || !gender) {
       return;
     }
 
@@ -67,6 +69,7 @@ export function PersonalInfoScreen({ route, navigation }: Props) {
             placeholder="30"
             keyboardType="number-pad"
             suffix="years"
+            error={ageError}
           />
         </FormSection>
 

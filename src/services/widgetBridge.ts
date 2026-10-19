@@ -9,6 +9,14 @@ export interface WidgetSnapshotPayload {
   dateLabel: string;
   isOver: boolean;
   ready: boolean;
+  /** Local date (YYYY-MM-DD) the snapshot was built for. */
+  dateKey: string;
+  /** Raw daily target, so the widget can render a fresh day after midnight. */
+  targetValue: number;
+  /** Current streak length at snapshot time. */
+  streakCount: number;
+  /** Whether anything was logged on `dateKey` (streak survives into tomorrow). */
+  loggedToday: boolean;
 }
 
 type WidgetBridgeNative = {

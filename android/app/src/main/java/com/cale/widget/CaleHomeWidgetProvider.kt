@@ -1,8 +1,10 @@
 package com.cale.widget
 
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -11,6 +13,12 @@ import android.view.View
 import android.widget.RemoteViews
 import com.cale.MainActivity
 import com.cale.R
+import java.text.DateFormat
+import java.text.NumberFormat
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class CaleHomeWidgetProvider : AppWidgetProvider() {
   override fun onUpdate(
@@ -20,6 +28,30 @@ class CaleHomeWidgetProvider : AppWidgetProvider() {
   ) {
     for (id in appWidgetIds) {
       updateAppWidget(context, appWidgetManager, id)
+    }
+    scheduleMidnightRefresh(context)
+  }
+
+  override fun onEnabled(context: Context) {
+    super.onEnabled(context)
+    scheduleMidnightRefresh(context)
+  }
+
+  override fun onDisabled(context: Context) {
+    super.onDisabled(context)
+    cancelMidnightRefresh(context)
+  }
+
+  override fun onReceive(context: Context, intent: Intent) {
+    when (intent.action) {
+      ACTION_MIDNIGHT_REFRESH,
+      Intent.ACTION_DATE_CHANGED,
+      Intent.ACTION_TIME_CHANGED,
+      Intent.ACTION_TIMEZONE_CHANGED -> {
+        refreshAll(context)
+        scheduleMidnightRefresh(context)
+      }
+      else -> super.onReceive(context, intent)
     }
   }
 
@@ -33,6 +65,68 @@ class CaleHomeWidgetProvider : AppWidgetProvider() {
   }
 
   companion object {
+    const val ACTION_MIDNIGHT_REFRESH = "com.cale.widget.ACTION_MIDNIGHT_REFRESH"
+    private const val MIDNIGHT_REQUEST_CODE = 4201
+
+    private fun todayKey(): String =
+      SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+
+    private fun yesterdayKey(): String {
+      val cal = Calendar.getInstance()
+      cal.add(Calendar.DAY_OF_YEAR, -1)
+      return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(cal.time)
+    }
+
+    private fun todayLabel(): String =
+      DateFormat.getDateInstance(DateFormat.FULL, Locale.getDefault()).format(Date())
+
+    private fun midnightPendingIntent(context: Context): PendingIntent {
+      val intent =
+        Intent(context, CaleHomeWidgetProvider::class.java).apply {
+          action = ACTION_MIDNIGHT_REFRESH
+        }
+      return PendingIntent.getBroadcast(
+        context,
+        MIDNIGHT_REQUEST_CODE,
+        intent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+      )
+    }
+
+    /**
+     * Inexact, non-wakeup alarm shortly after the next local midnight so the
+     * widget rolls over to a fresh day even if the app isn't opened.
+     * (ACTION_DATE_CHANGED is not delivered to manifest receivers on API 26+.)
+     */
+    fun scheduleMidnightRefresh(context: Context) {
+      val alarmManager =
+        context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+      val next =
+        Calendar.getInstance().apply {
+          add(Calendar.DAY_OF_YEAR, 1)
+          set(Calendar.HOUR_OF_DAY, 0)
+          set(Calendar.MINUTE, 1)
+          set(Calendar.SECOND, 0)
+          set(Calendar.MILLISECOND, 0)
+        }
+      alarmManager.set(AlarmManager.RTC, next.timeInMillis, midnightPendingIntent(context))
+    }
+
+    fun cancelMidnightRefresh(context: Context) {
+      val alarmManager =
+        context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+      alarmManager.cancel(midnightPendingIntent(context))
+    }
+
+    fun refreshAll(context: Context) {
+      val manager = AppWidgetManager.getInstance(context)
+      val ids =
+        manager.getAppWidgetIds(ComponentName(context, CaleHomeWidgetProvider::class.java))
+      for (id in ids) {
+        updateAppWidget(context, manager, id)
+      }
+    }
+
     private fun applyTypography(views: RemoteViews, type: WidgetTypography) {
       views.setTextViewTextSize(R.id.widget_brand, TypedValue.COMPLEX_UNIT_SP, type.brand)
       views.setTextViewTextSize(R.id.widget_date, TypedValue.COMPLEX_UNIT_SP, type.date)
@@ -84,16 +178,44 @@ class CaleHomeWidgetProvider : AppWidgetProvider() {
           Context.MODE_PRIVATE,
         )
       val ready = prefs.getBoolean(WidgetBridgeModule.KEY_READY, false)
-      val isOver = prefs.getBoolean(WidgetBridgeModule.KEY_IS_OVER, false)
-      val hero = prefs.getString(WidgetBridgeModule.KEY_HERO, "—") ?: "—"
-      val heroSub =
+      var isOver = prefs.getBoolean(WidgetBridgeModule.KEY_IS_OVER, false)
+      var hero = prefs.getString(WidgetBridgeModule.KEY_HERO, "—") ?: "—"
+      var heroSub =
         prefs.getString(WidgetBridgeModule.KEY_HERO_SUB, "kcal left")
           ?: "kcal left"
-      val eaten = prefs.getString(WidgetBridgeModule.KEY_EATEN, "0") ?: "0"
-      val target = prefs.getString(WidgetBridgeModule.KEY_TARGET, "0") ?: "0"
-      val streak = prefs.getString(WidgetBridgeModule.KEY_STREAK, "") ?: ""
-      val dateLabel =
+      var eaten = prefs.getString(WidgetBridgeModule.KEY_EATEN, "0") ?: "0"
+      var target = prefs.getString(WidgetBridgeModule.KEY_TARGET, "0") ?: "0"
+      var streak = prefs.getString(WidgetBridgeModule.KEY_STREAK, "") ?: ""
+      var dateLabel =
         prefs.getString(WidgetBridgeModule.KEY_DATE, "Today") ?: "Today"
+      val snapshotDateKey = prefs.getString(WidgetBridgeModule.KEY_DATE_KEY, "") ?: ""
+
+      // Snapshot is from a previous day (app not opened since midnight):
+      // render a fresh "today" instead of yesterday's numbers.
+      val today = todayKey()
+      if (snapshotDateKey.isNotEmpty() && snapshotDateKey != today) {
+        dateLabel = todayLabel()
+        if (ready) {
+          val targetValue = prefs.getLong(WidgetBridgeModule.KEY_TARGET_VALUE, 0L)
+          val numberFormat = NumberFormat.getIntegerInstance()
+          isOver = false
+          hero = numberFormat.format(targetValue)
+          heroSub = "kcal left"
+          eaten = "0"
+          target = numberFormat.format(targetValue)
+          // Streak still counts today only if the snapshot day was yesterday
+          // and something was logged on it.
+          val streakCount = prefs.getInt(WidgetBridgeModule.KEY_STREAK_COUNT, 0)
+          val loggedOnSnapshotDay =
+            prefs.getBoolean(WidgetBridgeModule.KEY_LOGGED_TODAY, false)
+          streak =
+            if (snapshotDateKey == yesterdayKey() && loggedOnSnapshotDay && streakCount > 0) {
+              "$streakCount-day streak"
+            } else {
+              "Log today to start a streak"
+            }
+        }
+      }
 
       val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
       val (widthDp, heightDp) = WidgetLayout.currentSizeDp(options)

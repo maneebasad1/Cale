@@ -38,7 +38,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     open url: URL,
     options: [UIApplication.OpenURLOptionsKey: Any] = [:]
   ) -> Bool {
-    return GIDSignIn.sharedInstance.handle(url)
+    if GIDSignIn.sharedInstance.handle(url) {
+      return true
+    }
+    // Forward everything else (e.g. cale://auth links) to React Native's
+    // Linking so it fires while the app is running.
+    return RCTLinkingManager.application(app, open: url, options: options)
   }
 }
 

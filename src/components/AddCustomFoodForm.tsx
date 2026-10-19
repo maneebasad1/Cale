@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button } from './Button';
 import { colors, radii, spacing, typography } from '../constants/theme';
@@ -7,6 +7,10 @@ import {
   updateCustomFood,
 } from '../services/customFoodService';
 import type { FoodItem } from '../types/food';
+import {
+  getCalorieLimitError,
+  sanitizeCalorieInput,
+} from '../utils/calorieLimits';
 
 interface AddCustomFoodFormProps {
   food?: FoodItem;
@@ -26,6 +30,8 @@ export function AddCustomFoodForm({
     food ? String(food.calories) : '',
   );
   const [serving, setServing] = useState(food?.servingLabel ?? '');
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   useEffect(() => {
     setName(food?.name ?? '');
@@ -34,12 +40,16 @@ export function AddCustomFoodForm({
   }, [food]);
 
   const caloriesNum = parseInt(calories, 10);
-  const canSave = name.trim().length > 0 && caloriesNum > 0;
+  const caloriesError = getCalorieLimitError(caloriesNum);
+  const canSave =
+    name.trim().length > 0 && caloriesNum > 0 && caloriesError === null;
 
   const handleSave = async () => {
-    if (!canSave) {
+    if (!canSave || savingRef.current) {
       return;
     }
+    savingRef.current = true;
+    setSaving(true);
 
     const payload = {
       name: name.trim(),
@@ -47,12 +57,17 @@ export function AddCustomFoodForm({
       servingLabel: serving.trim() || undefined,
     };
 
-    const saved = food
-      ? await updateCustomFood(food.id, payload)
-      : await addCustomFood(payload);
+    try {
+      const saved = food
+        ? await updateCustomFood(food.id, payload)
+        : await addCustomFood(payload);
 
-    if (saved) {
-      onSaved(saved);
+      if (saved) {
+        onSaved(saved);
+      }
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
@@ -84,13 +99,16 @@ export function AddCustomFoodForm({
             <TextInput
               style={styles.inputCompact}
               value={calories}
-              onChangeText={setCalories}
+              onChangeText={text => setCalories(sanitizeCalorieInput(text))}
               placeholder="0"
               placeholderTextColor={colors.textSecondary}
               keyboardType="number-pad"
             />
             <Text style={styles.suffix}>kcal</Text>
           </View>
+          {caloriesError ? (
+            <Text style={styles.errorText}>{caloriesError}</Text>
+          ) : null}
         </View>
         <View style={styles.fieldHalf}>
           <Text style={styles.label}>Serving (optional)</Text>
@@ -108,6 +126,7 @@ export function AddCustomFoodForm({
         title={isEditing ? 'Save changes' : 'Save food'}
         onPress={handleSave}
         disabled={!canSave}
+        loading={saving}
         style={styles.saveBtn}
       />
       {onCancel ? (
@@ -185,6 +204,12 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
     marginLeft: spacing.xs,
+  },
+  errorText: {
+    ...typography.caption,
+    color: colors.error,
+    marginTop: -spacing.xs,
+    marginBottom: spacing.sm,
   },
   saveBtn: {
     minHeight: 48,

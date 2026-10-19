@@ -9,6 +9,8 @@ interface LabeledInputProps {
   placeholder?: string;
   keyboardType?: 'default' | 'numeric' | 'number-pad';
   suffix?: string;
+  /** Inline validation message shown under the field. */
+  error?: string | null;
 }
 
 export function LabeledInput({
@@ -18,11 +20,12 @@ export function LabeledInput({
   placeholder,
   keyboardType = 'default',
   suffix,
+  error,
 }: LabeledInputProps) {
   return (
     <View style={styles.container}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={styles.inputRow}>
+      <View style={[styles.inputRow, error ? styles.inputRowError : null]}>
         <TextInput
           style={styles.input}
           value={value}
@@ -33,6 +36,7 @@ export function LabeledInput({
         />
         {suffix && <Text style={styles.suffix}>{suffix}</Text>}
       </View>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
 }
@@ -55,6 +59,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
   },
+  inputRowError: {
+    borderColor: colors.error,
+  },
   input: {
     flex: 1,
     fontFamily: fonts.body,
@@ -66,5 +73,10 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
     marginLeft: spacing.sm,
+  },
+  error: {
+    ...typography.caption,
+    color: colors.error,
+    marginTop: spacing.xs,
   },
 });

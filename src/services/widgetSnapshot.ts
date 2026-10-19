@@ -32,6 +32,10 @@ export async function refreshHomeWidget(): Promise<void> {
         dateLabel: formatDisplayDate(today),
         isOver: false,
         ready: false,
+        dateKey: today,
+        targetValue: 0,
+        streakCount: 0,
+        loggedToday: false,
       });
       return;
     }
@@ -55,6 +59,10 @@ export async function refreshHomeWidget(): Promise<void> {
       dateLabel: formatDisplayDate(today),
       isOver,
       ready: true,
+      dateKey: today,
+      targetValue: target,
+      streakCount: streak,
+      loggedToday: log.entries.length > 0,
     });
   } catch {
     // Never surface widget errors to the user.

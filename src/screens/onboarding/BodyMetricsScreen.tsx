@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BrandLogo } from '../../components/BrandLogo';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
@@ -9,7 +9,7 @@ import { OnboardingFooter } from '../../components/onboarding/OnboardingFooter';
 import { OnboardingHeader } from '../../components/onboarding/OnboardingHeader';
 import { Screen } from '../../components/Screen';
 import { UnitToggle } from '../../components/UnitToggle';
-import { spacing } from '../../constants/theme';
+import { colors, spacing, typography } from '../../constants/theme';
 import type { OnboardingStackParamList } from '../../navigation/types';
 import type { HeightUnit, WeightUnit } from '../../types';
 import {
@@ -18,6 +18,12 @@ import {
   kgToLb,
   lbToKg,
 } from '../../utils/units';
+import {
+  validateFeetInches,
+  validateHeightCm,
+  validateWeightKg,
+} from '../../utils/bodyValidation';
+import { parseDecimal } from '../../utils/parseDecimal';
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, 'BodyMetrics'>;
 
@@ -29,17 +35,44 @@ export function BodyMetricsScreen({ navigation }: Props) {
   const [heightFeet, setHeightFeet] = useState('');
   const [heightInches, setHeightInches] = useState('');
 
-  const isHeightValid = () =>
-    heightUnit === 'cm'
-      ? parseFloat(height) > 0
-      : (parseInt(heightFeet, 10) || 0) > 0 ||
-        (parseInt(heightInches, 10) || 0) > 0;
+  const weightNum = parseDecimal(weight);
+  const weightKg = weightUnit === 'kg' ? weightNum : lbToKg(weightNum);
+  const weightError = weight.trim()
+    ? validateWeightKg(weightKg, weightUnit)
+    : null;
 
-  const isValid = () => parseFloat(weight) > 0 && isHeightValid();
+  const resolveHeightCm = (): number => {
+    if (heightUnit === 'cm') {
+      return parseDecimal(height);
+    }
+    return feetInchesToCm(
+      parseInt(heightFeet, 10) || 0,
+      parseInt(heightInches, 10) || 0,
+    );
+  };
+  const heightCm = resolveHeightCm();
+  const hasHeightInput =
+    heightUnit === 'cm'
+      ? Boolean(height.trim())
+      : Boolean(heightFeet.trim() || heightInches.trim());
+  const heightError = !hasHeightInput
+    ? null
+    : heightUnit === 'ft_in'
+      ? validateFeetInches(
+          parseInt(heightFeet, 10) || 0,
+          parseInt(heightInches, 10) || 0,
+        ) ?? validateHeightCm(heightCm, heightUnit)
+      : validateHeightCm(heightCm, heightUnit);
+
+  const isValid = () =>
+    Boolean(weight.trim()) &&
+    hasHeightInput &&
+    !weightError &&
+    !heightError;
 
   const convertWeight = (unit: WeightUnit) => {
     if (weight) {
-      const num = parseFloat(weight);
+      const num = parseDecimal(weight);
       if (!isNaN(num)) {
         setWeight(
           String(
@@ -53,7 +86,7 @@ export function BodyMetricsScreen({ navigation }: Props) {
 
   const convertHeight = (unit: HeightUnit) => {
     if (unit === 'ft_in' && height) {
-      const cm = parseFloat(height);
+      const cm = parseDecimal(height);
       if (!isNaN(cm)) {
         const { feet, inches } = cmToFeetInches(cm);
         setHeightFeet(String(feet));
@@ -70,24 +103,12 @@ export function BodyMetricsScreen({ navigation }: Props) {
   };
 
   const handleContinue = () => {
-    const weightNum = parseFloat(weight);
-    let heightCm: number;
-
-    if (heightUnit === 'cm') {
-      heightCm = parseFloat(height);
-    } else {
-      heightCm = feetInchesToCm(
-        parseInt(heightFeet, 10) || 0,
-        parseInt(heightInches, 10) || 0,
-      );
-    }
-
-    if (!weightNum || !heightCm) {
+    if (!isValid()) {
       return;
     }
 
     navigation.navigate('PersonalInfo', {
-      weightKg: weightUnit === 'kg' ? weightNum : lbToKg(weightNum),
+      weightKg,
       heightCm,
       weightUnit,
       heightUnit,
@@ -129,6 +150,7 @@ export function BodyMetricsScreen({ navigation }: Props) {
             placeholder={weightUnit === 'kg' ? '70' : '154'}
             keyboardType="numeric"
             suffix={weightUnit}
+            error={weightError}
           />
         </FormSection>
 
@@ -150,6 +172,7 @@ export function BodyMetricsScreen({ navigation }: Props) {
               placeholder="175"
               keyboardType="numeric"
               suffix="cm"
+              error={heightError}
             />
           ) : (
             <View style={styles.heightRow}>
@@ -175,6 +198,9 @@ export function BodyMetricsScreen({ navigation }: Props) {
               </View>
             </View>
           )}
+          {heightUnit === 'ft_in' && heightError ? (
+            <Text style={styles.error}>{heightError}</Text>
+          ) : null}
         </FormSection>
       </KeyboardAwareScreen>
     </Screen>
@@ -198,5 +224,10 @@ const styles = StyleSheet.create({
   },
   heightField: {
     flex: 1,
+  },
+  error: {
+    ...typography.caption,
+    color: colors.error,
+    marginTop: -spacing.sm,
   },
 });

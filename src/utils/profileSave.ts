@@ -3,6 +3,7 @@ import {
   calculateCalorieAdjustment,
   calculateDailyTarget,
   calculateMaintenance,
+  isGoalReached,
   resolveProfileTargets,
 } from './bmr';
 
@@ -54,6 +55,15 @@ export function buildUpdatedProfile(
     );
   }
 
+  // Once the goal is reached (or overshot) stop the deficit/surplus — even a
+  // custom one — and target maintenance until the user sets a new goal.
+  const goalReached =
+    merged.goalType !== 'maintain' &&
+    isGoalReached(merged.goalType, merged.weightKg, goalWeightKg);
+  if (goalReached) {
+    calorieAdjustment = 0;
+  }
+
   const dailyTargetCalories = calculateDailyTarget(
     maintenanceCalories,
     calorieAdjustment,
@@ -65,7 +75,7 @@ export function buildUpdatedProfile(
     updates.maintenanceIsCustom ?? merged.maintenanceIsCustom ?? false;
 
   const adjustmentIsCustom =
-    merged.goalType === 'maintain'
+    merged.goalType === 'maintain' || goalReached
       ? false
       : (updates.adjustmentIsCustom ?? merged.adjustmentIsCustom ?? false);
 

@@ -9,6 +9,8 @@ export type HydrateLocalPolicy =
  *
  * Guest / pre-account logs have no hydrated user id. Those must be claimed
  * and kept — never wiped — so "log first, sign in later" actually works.
+ * 'claim-local' still pulls remote and merges it in (see hydrateMerge): if
+ * the account already exists, its profile + target history win.
  */
 export function resolveHydrateLocalPolicy(
   hydratedFor: string | null,

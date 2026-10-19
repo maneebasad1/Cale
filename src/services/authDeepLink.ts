@@ -87,19 +87,38 @@ export async function createSessionFromUrl(url: string): Promise<string | null> 
 export function subscribeToAuthDeepLinks(
   onError?: (message: string) => void,
 ): () => void {
+  const reportError = (message: string) => {
+    try {
+      onError?.(message);
+    } catch {
+      // Never let a UI callback crash the link handler.
+    }
+  };
+
   const handleUrl = (url: string | null | undefined) => {
     if (!url || !isAuthRedirectUrl(url)) {
       return;
     }
 
-    void createSessionFromUrl(url).then((errorMessage) => {
-      if (errorMessage) {
-        onError?.(errorMessage);
-      }
-    });
+    // createSessionFromUrl can throw synchronously-in-async (e.g. URIError
+    // from decodeURIComponent on a malformed link) or reject on network
+    // errors — surface both instead of leaving an unhandled rejection.
+    createSessionFromUrl(url)
+      .then((errorMessage) => {
+        if (errorMessage) {
+          reportError(errorMessage);
+        }
+      })
+      .catch((error: unknown) => {
+        reportError(
+          error instanceof Error ? error.message : 'Authentication failed.',
+        );
+      });
   };
 
-  void Linking.getInitialURL().then(handleUrl);
+  Linking.getInitialURL()
+    .then(handleUrl)
+    .catch(() => undefined);
 
   const subscription = Linking.addEventListener('url', ({ url }) => {
     handleUrl(url);

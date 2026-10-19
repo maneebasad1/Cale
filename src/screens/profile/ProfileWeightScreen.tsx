@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
   StyleSheet,
@@ -13,24 +13,27 @@ import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import { LabeledInput } from '../../components/LabeledInput';
 import { Screen } from '../../components/Screen';
 import { colors, fonts, radii, spacing, typography } from '../../constants/theme';
-import { getProfile, saveProfile } from '../../services/storage';
+import { useApp } from '../../context/AppContext';
+import { getProfile } from '../../services/storage';
 import {
   addWeightEntry,
   deleteWeightEntry,
+  getLatestWeightEntry,
   getWeightEntries,
 } from '../../services/weightService';
 import type { WeightEntry } from '../../types/weight';
 import { displayWeight, lbToKg } from '../../utils/units';
-import { buildUpdatedProfile } from '../../utils/profileSave';
-import {
-  promptCustomAdjustmentUpdate,
-  shouldPromptCustomAdjustmentUpdate,
-} from '../../utils/profileAdjustmentPrompt';
+import { validateWeightKg } from '../../utils/bodyValidation';
+import { parseDecimal } from '../../utils/parseDecimal';
+import { syncProfileWeight } from '../../utils/profileWeightSync';
 
 export function ProfileWeightScreen() {
   const [weightUnit, setWeightUnit] = useState<'kg' | 'lb'>('kg');
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
   const [newWeight, setNewWeight] = useState('');
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const { refreshProfile } = useApp();
 
   const loadData = useCallback(async () => {
     const profile = await getProfile();
@@ -48,36 +51,54 @@ export function ProfileWeightScreen() {
   );
 
   const handleLogWeight = async () => {
-    const weightNum = parseFloat(newWeight);
-    if (!weightNum) {
-      Alert.alert('Check your weight', 'Enter a valid weight to log.');
+    if (savingRef.current) {
       return;
     }
 
+    const weightNum = parseDecimal(newWeight);
     const weightKg = weightUnit === 'kg' ? weightNum : lbToKg(weightNum);
-
-    await addWeightEntry(weightKg);
-    const profile = await getProfile();
-    if (profile) {
-      const applySave = async (useAutoAdjustment: boolean) => {
-        const updated = buildUpdatedProfile(profile, {
-          weightKg,
-          ...(useAutoAdjustment ? { adjustmentIsCustom: false } : {}),
-        });
-        await saveProfile(updated);
-      };
-
-      if (shouldPromptCustomAdjustmentUpdate(profile, { weightKg })) {
-        promptCustomAdjustmentUpdate(profile, { weightKg }, useAuto =>
-          applySave(useAuto),
-        );
-      } else {
-        await applySave(false);
-      }
+    const error = validateWeightKg(weightKg, weightUnit);
+    if (error) {
+      Alert.alert('Check your weight', error);
+      return;
     }
-    setNewWeight('');
+
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await addWeightEntry(weightKg);
+      await syncProfileWeight(weightKg);
+      await refreshProfile();
+      setNewWeight('');
+      await loadData();
+      Alert.alert('Weight logged', 'Your weight has been recorded.');
+    } catch {
+      Alert.alert('Couldn’t log weight', 'Something went wrong. Please try again.');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
+  const removeEntry = async (entry: WeightEntry) => {
+    try {
+      const latestBefore = await getLatestWeightEntry();
+      await deleteWeightEntry(entry.id);
+      // If the newest entry was removed, roll the profile weight back to the
+      // newest remaining entry so targets match the history.
+      if (latestBefore?.id === entry.id) {
+        const newest = await getLatestWeightEntry();
+        if (newest) {
+          await syncProfileWeight(newest.weightKg, {
+            promptForCustomAdjustment: false,
+          });
+          await refreshProfile();
+        }
+      }
+    } catch {
+      Alert.alert('Couldn’t remove entry', 'Something went wrong. Please try again.');
+    }
     await loadData();
-    Alert.alert('Weight logged', 'Your weight has been recorded.');
   };
 
   const handleDelete = (entry: WeightEntry) => {
@@ -86,7 +107,9 @@ export function ProfileWeightScreen() {
       {
         text: 'Remove',
         style: 'destructive',
-        onPress: () => deleteWeightEntry(entry.id).then(loadData),
+        onPress: () => {
+          removeEntry(entry);
+        },
       },
     ]);
   };
@@ -105,6 +128,7 @@ export function ProfileWeightScreen() {
         <Button
           title="Log today's weight"
           onPress={handleLogWeight}
+          loading={saving}
           style={styles.logBtn}
         />
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -13,7 +13,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { FrequentFoodsRow } from './FrequentFoodsRow';
 import { Icon } from './Icon';
 import { getFrequentFoods } from '../services/frequentFoods';
-import { searchFoods } from '../services/foodService';
+import {
+  mergeFoodResults,
+  searchSavedFoods,
+  searchUsdaFoods,
+} from '../services/foodService';
 import type { FoodItem } from '../types/food';
 import { FOOD_REGION_LABELS } from '../types/food';
 import { colors, fonts, radii, spacing, typography } from '../constants/theme';
@@ -42,6 +46,9 @@ export function FoodSearchList({
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const [remoteError, setRemoteError] = useState<string | null>(null);
+  const latestRequestRef = useRef(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [frequentFoods, setFrequentFoods] = useState<FoodItem[]>([]);
   const selectedSet = new Set(selectedIds);
@@ -60,10 +67,42 @@ export function FoodSearchList({
   }, [refreshKey, showFrequent]);
 
   const loadResults = useCallback(async (searchQuery: string) => {
+    const requestId = latestRequestRef.current + 1;
+    latestRequestRef.current = requestId;
+    const isLatest = () => latestRequestRef.current === requestId;
+
     setLoading(true);
-    const items = await searchFoods(searchQuery);
-    setResults(items);
-    setLoading(false);
+    setRemoteLoading(false);
+    setRemoteError(null);
+    try {
+      // Saved + built-in foods first so they show while USDA loads.
+      const saved = await searchSavedFoods(searchQuery);
+      if (!isLatest()) {
+        return;
+      }
+      setResults(saved);
+      setLoading(false);
+
+      if (searchQuery.trim().length < 2) {
+        return;
+      }
+      setRemoteLoading(true);
+      const usda = await searchUsdaFoods(searchQuery);
+      if (!isLatest()) {
+        return;
+      }
+      setResults(mergeFoodResults(saved, usda.items));
+      setRemoteError(usda.error);
+    } catch {
+      if (isLatest()) {
+        setRemoteError('Search failed');
+      }
+    } finally {
+      if (isLatest()) {
+        setLoading(false);
+        setRemoteLoading(false);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -81,12 +120,18 @@ export function FoodSearchList({
   };
 
   const emptyMessage = query.trim()
-    ? 'Nothing matched. Try another name, or add your own food.'
+    ? remoteError
+      ? 'Online search is unavailable and no saved foods matched. Try again later, or add your own food.'
+      : 'Nothing matched. Try another name, or add your own food.'
     : multiSelect
       ? 'Search and tap foods to add them to this meal.'
       : 'Search the catalog, or add a food you cook often.';
 
-  const emptyTitle = query.trim() ? 'No matches' : 'Find a food';
+  const emptyTitle = query.trim()
+    ? remoteError
+      ? 'Online search unavailable'
+      : 'No matches'
+    : 'Find a food';
 
   const renderEmpty = () => (
     <View style={styles.empty}>
@@ -161,7 +206,25 @@ export function FoodSearchList({
         />
       ) : null}
 
-      {loading ? (
+      {remoteLoading && results.length > 0 ? (
+        <View style={styles.statusRow}>
+          <ActivityIndicator color={colors.primary} size="small" />
+          <Text style={styles.statusText}>Searching USDA…</Text>
+        </View>
+      ) : remoteError && results.length > 0 ? (
+        <View style={styles.statusRow}>
+          <Icon
+            name="alert-circle-outline"
+            size={14}
+            color={colors.textSecondary}
+          />
+          <Text style={styles.statusText}>
+            Online search unavailable — showing saved foods
+          </Text>
+        </View>
+      ) : null}
+
+      {(loading || remoteLoading) && results.length === 0 ? (
         <ActivityIndicator
           style={styles.loader}
           color={colors.primary}
@@ -219,6 +282,17 @@ const styles = StyleSheet.create({
   },
   loader: {
     padding: spacing.md,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  statusText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    flexShrink: 1,
   },
   listCompact: {
     maxHeight: 160,

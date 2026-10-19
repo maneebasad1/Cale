@@ -4,7 +4,17 @@ import {
   calculateCalorieAdjustment,
   calculateDailyTarget,
   calculateMaintenance,
+  isGoalReached,
 } from './bmr';
+
+/** Below this, a weight "change" is just lb↔kg/display rounding noise. */
+const WEIGHT_CHANGE_TOLERANCE_KG = 0.01;
+
+function differs(next: number | undefined, current: number): boolean {
+  return (
+    next !== undefined && Math.abs(next - current) > WEIGHT_CHANGE_TOLERANCE_KG
+  );
+}
 
 function adjustmentLabel(goalType: GoalType, magnitude: number): string {
   const noun = goalType === 'lose' ? 'deficit' : 'surplus';
@@ -19,11 +29,18 @@ export function shouldPromptCustomAdjustmentUpdate(
     return false;
   }
 
-  const weightChanged =
-    updates.weightKg !== undefined && updates.weightKg !== profile.weightKg;
-  const goalWeightChanged =
-    updates.goalWeightKg !== undefined &&
-    updates.goalWeightKg !== profile.goalWeightKg;
+  const merged = { ...profile, ...updates };
+  // A reached goal switches to maintenance regardless of the custom value, so
+  // there is nothing to ask about.
+  if (
+    merged.goalType === 'maintain' ||
+    isGoalReached(merged.goalType, merged.weightKg, merged.goalWeightKg)
+  ) {
+    return false;
+  }
+
+  const weightChanged = differs(updates.weightKg, profile.weightKg);
+  const goalWeightChanged = differs(updates.goalWeightKg, profile.goalWeightKg);
   const goalTypeChanged =
     updates.goalType !== undefined && updates.goalType !== profile.goalType;
 
